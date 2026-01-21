@@ -54,6 +54,13 @@ coverage/
 *.backup
 *~
 
+# Python virtual environments
+.venv/
+.venv-*/
+
+# Local npm cache
+sdk/.npm-cache/
+
 # Devnet logs (may contain private keys)
 scripts/devnet-e2e/devnet.log
 scripts/devnet-e2e/*.log
