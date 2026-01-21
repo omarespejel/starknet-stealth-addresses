@@ -189,7 +189,7 @@ fn register_stealth_meta_address(ref self: ContractState, ...) {
 
 **Location**: Architectural design
 
-**Description**: The protocol uses a single spending key. There's no separate viewing key for delegated scanning.
+**Description**: The protocol supports both single-key and dual-key modes, enabling separate viewing keys for delegated scanning.
 
 **Impact**:
 - Cannot delegate scanning to untrusted services without exposing spending capability
@@ -197,8 +197,8 @@ fn register_stealth_meta_address(ref self: ContractState, ...) {
 - No watch-only wallet support
 
 **Recommendation**:
-1. Add dual-key support (DKSAP) in future version
-2. Allow viewing key derivation for scanning delegation
+1. Prefer dual-key mode when delegating scanning
+2. Document viewing-key delegation best practices
 3. Document current limitation in SNIP
 
 ---
@@ -400,7 +400,7 @@ The [Umbra Anonymity Analysis (2023)](https://arxiv.org/abs/2308.01703) found 25
 ### Medium-Term (v2.0)
 
 7. **Integrate with Tongo** for amount privacy [H-02]
-8. **Add dual-key support** (viewing key separation) [M-01]
+8. **Encourage dual-key support** (viewing key separation) [M-01]
 9. **Implement timelocks** or delay recommendations [H-03]
 
 ### Long-Term
@@ -418,7 +418,7 @@ The protocol correctly implements the core stealth address primitive and provide
 - **Amounts are visible** → Easy correlation
 - **Sender is exposed** → Full sender deanonymization  
 - **Timing is unprotected** → Correlation attacks
-- **No viewing key separation** → All-or-nothing privacy
+- **Viewing key separation** → Delegated scanning without spending risk
 
 For a production-grade privacy system, integration with **Tongo** (amount hiding) and **relayer infrastructure** (sender hiding) is essential. The current implementation is suitable as a foundation but should not be marketed as providing "strong privacy" without these additions.
 

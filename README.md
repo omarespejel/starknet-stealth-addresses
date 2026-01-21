@@ -19,6 +19,7 @@ Privacy-preserving payments on Starknet using stealth addresses. Recipients can 
 - **Efficient Scanning**: View tags provide ~256x speedup for recipients
 - **Deterministic Addresses**: Senders can pre-compute addresses before deployment
 - **Production-Grade Security**: Defense-in-depth validation using native Starknet ECDSA
+- **Dual-Key Support**: Separate viewing keys for delegated scanning
 - **87 Tests Passing**: Unit, security, integration, E2E, fuzz, stress, and gas benchmarks
 
 ## How It Works
@@ -134,6 +135,29 @@ This protocol provides **recipient unlinkability** but shares limitations with o
 - Timing correlation attacks are possible
 
 See the [Security Analysis](./docs/PRIVACY_AUDIT.md) for detailed analysis and the [Tongo Integration](#privacy-stack-integration-with-tongo) section for achieving full privacy.
+
+### Security Assumptions
+
+- Meta-addresses and announcements are public on-chain data.
+- RPC providers can observe queries and timing; avoid leaking metadata.
+- Private keys are generated and stored securely by the client.
+- The SDK relies on `@scure/starknet` and Starknet standard cryptography.
+
+## Privacy Best Practices
+
+- Register meta-addresses from a different address than your spending accounts.
+- Avoid consolidating multiple stealth withdrawals into a single collector address.
+- Use varied funding sources or relayers for gas to reduce linkage.
+- Consider delayed withdrawals and amount splitting for timing correlation resistance.
+
+## Privacy Rationale (Concise)
+
+Starknet’s pre‑computable addresses and native account abstraction reduce (but do not eliminate) common stealth‑address leakage:
+
+- **Pre‑computation** lets senders fund a stealth address without deploying it, and recipients can deploy later to break timing correlation.
+- **Atomic send + announce** is possible with multicall, which reduces timing‑based linkage but does not hide the sender.
+- **Native account abstraction** reduces the “gas funding” leak by letting stealth accounts pay fees with received tokens or via paymasters.
+- **Important caveat**: Ethereum ERC‑5564 implementations vary; not all flows require contract deployment, and transaction counts can differ.
 
 ## Documentation
 
