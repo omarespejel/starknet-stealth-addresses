@@ -1,0 +1,14 @@
+# Starknet Foundry Configuration
+# https://foundry-rs.github.io/starknet-foundry/
+
+[sncast.sepolia]
+url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+# account = "stealth-deployer"  # Uncomment after creating account
+
+[sncast.mainnet]
+url = "https://starknet-mainnet.public.blastapi.io"
+# account = "stealth-mainnet"  # For mainnet deployment
+
+[snforge]
+# Test configuration
+exit_first = false

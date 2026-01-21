@@ -1,0 +1,32 @@
+[package]
+name = "starknet_stealth_addresses"
+version = "0.1.0"
+edition = "2024_07"
+description = "Production-grade stealth address protocol for Starknet (SNIP-XX)"
+homepage = "https://github.com/starknet-io/SNIPs"
+license = "MIT"
+
+[dependencies]
+starknet = ">=2.9.0"
+
+# OpenZeppelin - battle-tested, audited contracts
+openzeppelin_account = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+openzeppelin_access = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+openzeppelin_introspection = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+openzeppelin_security = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+openzeppelin_upgrades = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v1.0.0" }
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.54.0" }
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+casm-add-pythonic-hints = true
+
+[tool.fmt]
+sort-module-level-items = true
+
+[tool.snforge]
+exit_first = false
