@@ -1,0 +1,19 @@
+{
+  "name": "stealth-deploy",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "node --loader ts-node/esm deploy.ts",
+    "deploy:tsx": "npx tsx deploy.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "starknet": "^6.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3"
+  }
+}

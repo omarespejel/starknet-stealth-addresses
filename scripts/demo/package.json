@@ -1,0 +1,17 @@
+{
+  "name": "stealth-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "demo": "npx tsx demo.ts"
+  },
+  "dependencies": {
+    "starknet": "^6.11.0",
+    "@scure/starknet": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0"
+  }
+}
