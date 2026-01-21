@@ -1,0 +1,23 @@
+{
+  "network": "sepolia",
+  "timestamp": "2026-01-20T00:00:00Z",
+  "version": "v2 - fixed compute_stealth_address",
+  "classHashes": {
+    "StealthRegistry": "0x2163854818379b95aa0ee82f27c39e5d77b24a25bd12d2aecba7f1837f33902",
+    "StealthAccount": "0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd",
+    "StealthAccountFactory": "0x2b5ad5d8193fdce23d21fbfe56c303d5482a35ecbc3b89444bad4ac08a55e71"
+  },
+  "contracts": {
+    "StealthRegistry": "0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c",
+    "StealthAccountFactory": "0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb"
+  },
+  "explorerLinks": {
+    "registry": "https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c",
+    "factory": "https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb"
+  },
+  "transactions": {
+    "factoryDeclare": "0x00e8a9eb26ca075791f08913ba80400d51958a37250379a431efeb73bec31c87",
+    "factoryDeploy": "0x050052209e584d4e8b69639f1ddcdfc8b9b2716b6114bc44db94d863b6c832fa",
+    "registryDeploy": "0x044f565f518f917626c98cbc4254a7d69ed26a2ea0609e66b5a50a2a135f0cd3"
+  }
+}
