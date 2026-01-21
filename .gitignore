@@ -1,0 +1,70 @@
+# Cairo / Scarb
+target/
+Scarb.lock
+
+# Starknet Foundry
+.snfoundry_cache/
+.snfoundry/
+
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+.npmrc
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.cursor/
+
+# Build artifacts
+dist/
+build/
+*.bin
+*.wasm
+
+# Test artifacts
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# Devnet logs (may contain private keys)
+scripts/devnet-e2e/devnet.log
+scripts/devnet-e2e/*.log
+
+# Deployment artifacts (keep structure, ignore sensitive data)
+# deployments/*.json  # Commented: deployment addresses are public info
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Repomix output
+context*.xml
+context-*.xml
