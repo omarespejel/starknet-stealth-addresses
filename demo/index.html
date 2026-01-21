@@ -667,7 +667,7 @@
       registryAddress: '0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c',
       factoryAddress: '0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb',
       accountClassHash: '0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd',
-      rpcUrl: 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/cf52O0RwFy1mEB0uoYsel',
+      rpcUrl: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
       ethTokenAddress: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
       strkTokenAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
     };
@@ -2054,8 +2054,8 @@
 
         const sn = await getStarknetModule();
         
-        // Use Alchemy v0_9 endpoint (latest supported version)
-        const rpcUrl = 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/cf52O0RwFy1mEB0uoYsel';
+        // Use public RPC endpoint (users can configure their own)
+        const rpcUrl = 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7';
         const provider = new sn.RpcProvider({ 
           nodeUrl: rpcUrl
         });
