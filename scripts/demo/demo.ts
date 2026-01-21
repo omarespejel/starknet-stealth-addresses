@@ -28,7 +28,7 @@ import { poseidonHashMany } from '@scure/starknet';
 // ============================================================================
 
 const CONFIG = {
-  rpcUrl: process.env.RPC_URL || 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7',
+  rpcUrl: process.env.RPC_URL || 'https://api.zan.top/public/starknet-sepolia',
   
   // Deployed contracts on Sepolia
   registryAddress: '0x04320728f5b57648dc569a247cb9acf475ec1a0ff17368be127b3621ca2e363a',

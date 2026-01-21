@@ -12,7 +12,7 @@ set -e
 
 # Configuration
 ACCOUNT_NAME="${ACCOUNT_NAME:-stealth-deployer}"
-RPC_URL="${RPC_URL:-https://starknet-sepolia.public.blastapi.io/rpc/v0_7}"
+RPC_URL="${RPC_URL:-https://api.zan.top/public/starknet-sepolia}"
 NETWORK="sepolia"
 
 echo "[*] Deploying Stealth Address Contracts to Starknet $NETWORK"

@@ -26,7 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const RPC_URL = process.env.RPC_URL || 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7';
+const RPC_URL = process.env.RPC_URL || 'https://api.zan.top/public/starknet-sepolia';
 const PRIVATE_KEY = process.env.PRIVATE_KEY || '';
 const ACCOUNT_ADDRESS = process.env.ACCOUNT_ADDRESS || '';
 

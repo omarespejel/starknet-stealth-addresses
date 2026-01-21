@@ -2,7 +2,7 @@
 # https://foundry-rs.github.io/starknet-foundry/
 
 [sncast.sepolia]
-url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+url = "https://api.zan.top/public/starknet-sepolia"
 # account = "stealth-deployer"  # Uncomment after creating account
 
 [sncast.mainnet]
