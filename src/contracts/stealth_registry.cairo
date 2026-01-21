@@ -18,11 +18,24 @@ pub mod StealthRegistry {
         StoragePointerReadAccess, StoragePointerWriteAccess, 
         StoragePathEntry, Map
     };
+    use core::traits::TryInto;
+    use core::num::traits::ops::checked::CheckedAdd;
     use starknet_stealth_addresses::interfaces::i_stealth_registry::IStealthRegistry;
     use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::IStealthRegistryAdmin;
     use starknet_stealth_addresses::types::meta_address::{StealthMetaAddress, StealthMetaAddressTrait};
     use starknet_stealth_addresses::errors::Errors;
     use starknet_stealth_addresses::crypto::constants::is_valid_public_key;
+
+    // ========================================================================
+    // CONSTANTS
+    // ========================================================================
+
+    /// Default minimum block gap between announcements (set to non-zero for production)
+    const DEFAULT_MIN_ANNOUNCE_BLOCK_GAP: u64 = 5;
+
+    fn zero_address() -> ContractAddress {
+        0.try_into().unwrap()
+    }
 
     // ========================================================================
     // STORAGE
@@ -32,6 +45,9 @@ pub mod StealthRegistry {
     struct Storage {
         /// Owner for admin operations
         owner: ContractAddress,
+
+        /// Pending owner for two-step transfer (0 = none)
+        pending_owner: ContractAddress,
 
         /// Maps user address to their stealth meta-address
         meta_addresses: Map<ContractAddress, StealthMetaAddress>,
@@ -60,6 +76,8 @@ pub mod StealthRegistry {
         MetaAddressUpdated: MetaAddressUpdated,
         Announcement: Announcement,
         MinAnnounceBlockGapUpdated: MinAnnounceBlockGapUpdated,
+        OwnershipTransferStarted: OwnershipTransferStarted,
+        OwnershipTransferred: OwnershipTransferred,
     }
 
     /// Emitted when a user registers their stealth meta-address
@@ -119,6 +137,20 @@ pub mod StealthRegistry {
         pub new_gap: u64,
     }
 
+    /// Emitted when ownership transfer is initiated
+    #[derive(Drop, starknet::Event)]
+    pub struct OwnershipTransferStarted {
+        pub previous_owner: ContractAddress,
+        pub new_owner: ContractAddress,
+    }
+
+    /// Emitted when ownership transfer is completed
+    #[derive(Drop, starknet::Event)]
+    pub struct OwnershipTransferred {
+        pub previous_owner: ContractAddress,
+        pub new_owner: ContractAddress,
+    }
+
     // ========================================================================
     // CONSTRUCTOR
     // ========================================================================
@@ -128,9 +160,10 @@ pub mod StealthRegistry {
         let exec_info = get_execution_info();
         let tx_info = exec_info.unbox().tx_info.unbox();
         self.owner.write(tx_info.account_contract_address);
+        self.pending_owner.write(zero_address());
         self.version.write(1);
         self.announcement_count.write(0);
-        self.min_announce_block_gap.write(0);
+        self.min_announce_block_gap.write(DEFAULT_MIN_ANNOUNCE_BLOCK_GAP);
     }
 
     // ========================================================================
@@ -259,7 +292,8 @@ pub mod StealthRegistry {
             
             // Get and increment announcement count
             let index = self.announcement_count.read();
-            self.announcement_count.write(index + 1);
+            let next_index = index.checked_add(1).expect(Errors::ANNOUNCEMENT_COUNT_OVERFLOW);
+            self.announcement_count.write(next_index);
             
             // Emit announcement event
             self.emit(Announcement {
@@ -308,6 +342,43 @@ pub mod StealthRegistry {
         /// Get registry owner
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()
+        }
+
+        /// Get pending owner
+        fn get_pending_owner(self: @ContractState) -> ContractAddress {
+            self.pending_owner.read()
+        }
+
+        /// Begin two-step ownership transfer
+        fn transfer_ownership(ref self: ContractState, new_owner: ContractAddress) {
+            let caller = get_caller_address();
+            let owner = self.owner.read();
+            assert(caller == owner, Errors::UNAUTHORIZED);
+
+            self.pending_owner.write(new_owner);
+
+            self.emit(OwnershipTransferStarted {
+                previous_owner: owner,
+                new_owner,
+            });
+        }
+
+        /// Accept ownership transfer
+        fn accept_ownership(ref self: ContractState) {
+            let caller = get_caller_address();
+            let pending = self.pending_owner.read();
+
+            assert(pending != zero_address(), Errors::NO_PENDING_OWNER);
+            assert(caller == pending, Errors::UNAUTHORIZED);
+
+            let previous = self.owner.read();
+            self.owner.write(pending);
+            self.pending_owner.write(zero_address());
+
+            self.emit(OwnershipTransferred {
+                previous_owner: previous,
+                new_owner: pending,
+            });
         }
     }
 

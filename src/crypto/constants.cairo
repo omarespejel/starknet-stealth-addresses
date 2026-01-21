@@ -21,34 +21,32 @@ pub mod StarkCurve {
     
     /// Curve order (number of points) - this fits in felt252
     pub const ORDER: felt252 = 0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f;
+
+    /// Half of the field prime (p - 1) / 2 for canonical Y enforcement
+    /// p = 2^251 + 17 * 2^192 + 1
+    pub const FIELD_HALF: u256 = 0x400000000000008800000000000000000000000000000000000000000000000;
 }
 
 /// On-curve validation toggle
 ///
 /// When set to true, `is_valid_public_key` performs a full curve check
 /// (y^2 == x^3 + alpha*x + beta). This adds gas cost to registry/factory
-/// calls. Default is false for performance.
-pub const STRICT_CURVE_CHECK: bool = false;
+/// calls. Default is true for production safety.
+pub const STRICT_CURVE_CHECK: bool = true;
 
 /// Validates a public key point
 /// 
 /// ## Security Model
 /// 
-/// This function performs a **minimal validation** (non-zero check only),
+/// This function performs **canonical** validation (non-zero + canonical Y),
 /// with an optional strict mode for full curve validation.
 ///
-/// Full on-curve validation is NOT needed because:
+/// Full on-curve validation is recommended for production because:
 /// 
-/// 1. **ECDSA builtin handles it**: Starknet's native `check_ecdsa_signature`
-///    (used in StealthAccount) validates the public key during signature
-///    verification. Invalid keys cause signature verification to fail.
-/// 
-/// 2. **Self-griefing only**: An attacker registering an invalid public key
-///    can never spend from the resulting stealth addresses - the signature
-///    verification will always fail.
-/// 
-/// 3. **Off-chain ECDH**: The ECDH computation happens in the SDK using
-///    `@scure/starknet`, which validates curve points.
+/// 1. **Registry hygiene**: Rejects invalid points early and prevents pollution.
+/// 2. **ECDH safety**: Off-chain ECDH assumes valid curve points.
+/// 3. **Defense in depth**: Even though the ECDSA builtin validates at spend
+///    time, early checks reduce DoS and operational risk.
 /// 
 /// ## What This Catches
 /// 
@@ -69,8 +67,13 @@ pub const STRICT_CURVE_CHECK: bool = false;
 /// true if valid, false otherwise
 pub fn is_valid_public_key(x: felt252, y: felt252) -> bool {
     // Check non-zero (not point at infinity)
-    // Full curve validation happens via check_ecdsa_signature at spend time
     if x == 0 || y == 0 {
+        return false;
+    }
+
+    // Enforce canonical Y (unique point representation)
+    let y_u256: u256 = y.into();
+    if y_u256 > StarkCurve::FIELD_HALF {
         return false;
     }
 

@@ -4,6 +4,9 @@ use snforge_std::{start_cheat_caller_address, stop_cheat_caller_address};
 use starknet::contract_address_const;
 
 use starknet_stealth_addresses::interfaces::i_stealth_registry::IStealthRegistryDispatcherTrait;
+use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
+    IStealthRegistryAdminDispatcher, IStealthRegistryAdminDispatcherTrait
+};
 use starknet_stealth_addresses::interfaces::i_stealth_account_factory::IStealthAccountFactoryDispatcherTrait;
 use starknet_stealth_addresses::interfaces::i_stealth_account::{
     IStealthAccountDispatcher, IStealthAccountDispatcherTrait
@@ -11,6 +14,14 @@ use starknet_stealth_addresses::interfaces::i_stealth_account::{
 use starknet_stealth_addresses::crypto::view_tag::compute_view_tag;
 
 use super::fixtures::{deploy_full_infrastructure, alice, bob, charlie, test_keys};
+
+fn disable_rate_limit(registry_addr: starknet::ContractAddress) {
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry_addr };
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry_addr, owner);
+    admin.set_min_announce_block_gap(0);
+    stop_cheat_caller_address(registry_addr);
+}
 
 #[test]
 fn test_e2e_complete_stealth_payment() {
@@ -72,6 +83,7 @@ fn test_e2e_complete_stealth_payment() {
 #[test]
 fn test_e2e_multiple_senders_single_recipient() {
     let infra = deploy_full_infrastructure();
+    disable_rate_limit(infra.registry_address);
     
     start_cheat_caller_address(infra.registry_address, alice());
     infra.registry.register_stealth_meta_address(
@@ -83,17 +95,38 @@ fn test_e2e_multiple_senders_single_recipient() {
     let addr1 = infra.factory.deploy_stealth_account(
         test_keys::TEST_STEALTH_PUBKEY_X, test_keys::TEST_STEALTH_PUBKEY_Y, 1
     );
-    infra.registry.announce(0, 1, 1, addr1, 10, 0);
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr1,
+        10,
+        0
+    );
     
     let addr2 = infra.factory.deploy_stealth_account(
         test_keys::TEST_STEALTH_PUBKEY_X, test_keys::TEST_STEALTH_PUBKEY_Y, 2
     );
-    infra.registry.announce(0, 2, 2, addr2, 20, 0);
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr2,
+        20,
+        0
+    );
     
     let addr3 = infra.factory.deploy_stealth_account(
         test_keys::TEST_STEALTH_PUBKEY_X, test_keys::TEST_STEALTH_PUBKEY_Y, 3
     );
-    infra.registry.announce(0, 3, 3, addr3, 30, 0);
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr3,
+        30,
+        0
+    );
     
     assert(addr1 != addr2, 'Addresses are unique');
     assert(addr2 != addr3, 'Addresses are unique');
@@ -106,14 +139,15 @@ fn test_e2e_multiple_senders_single_recipient() {
 #[test]
 fn test_e2e_scanning_with_view_tags() {
     let infra = deploy_full_infrastructure();
+    disable_rate_limit(infra.registry_address);
     
     let mut i: u8 = 0;
     while i < 10 {
         let addr = contract_address_const::<'stealth'>();
         infra.registry.announce(
             0,
-            i.into() + 1,
-            i.into() + 100,
+            test_keys::TEST_EPHEMERAL_PUBKEY_X,
+            test_keys::TEST_EPHEMERAL_PUBKEY_Y,
             addr,
             i,
             0

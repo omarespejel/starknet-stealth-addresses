@@ -5,10 +5,15 @@
 ///
 /// Run: snforge test test_stress
 
-use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, start_cheat_caller_address};
+use snforge_std::{
+    declare, ContractClassTrait, DeclareResultTrait, start_cheat_caller_address, stop_cheat_caller_address
+};
 use starknet::contract_address_const;
 use starknet_stealth_addresses::interfaces::i_stealth_registry::{
     IStealthRegistryDispatcher, IStealthRegistryDispatcherTrait
+};
+use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
+    IStealthRegistryAdminDispatcher, IStealthRegistryAdminDispatcherTrait
 };
 use starknet_stealth_addresses::interfaces::i_stealth_account_factory::{
     IStealthAccountFactoryDispatcher, IStealthAccountFactoryDispatcherTrait
@@ -31,6 +36,14 @@ fn deploy_factory() -> IStealthAccountFactoryDispatcher {
     let factory_class = declare("StealthAccountFactory").unwrap().contract_class();
     let (address, _) = factory_class.deploy(@array![(*account_class.class_hash).into()]).unwrap();
     IStealthAccountFactoryDispatcher { contract_address: address }
+}
+
+fn disable_rate_limit(registry_addr: starknet::ContractAddress) {
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry_addr };
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry_addr, owner);
+    admin.set_min_announce_block_gap(0);
+    stop_cheat_caller_address(registry_addr);
 }
 
 // Helper to get test addresses
@@ -93,6 +106,7 @@ fn test_stress_many_user_registrations() {
 #[test]
 fn test_stress_many_announcements() {
     let registry = deploy_registry();
+    disable_rate_limit(registry.contract_address);
     let num_announcements: u64 = 50;
     
     let mut i: u64 = 0;
@@ -156,6 +170,7 @@ fn test_stress_many_deployments() {
 fn test_stress_interleaved_operations() {
     let registry = deploy_registry();
     let factory = deploy_factory();
+    disable_rate_limit(registry.contract_address);
     let users = get_test_addresses();
     
     // Register 5 users

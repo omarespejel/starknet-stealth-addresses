@@ -38,6 +38,7 @@ const CURVE_ORDER = BigInt(
 const FIELD_PRIME = BigInt(
   '0x800000000000011000000000000000000000000000000000000000000000001'
 );
+const FIELD_HALF = (FIELD_PRIME - 1n) / 2n;
 
 /** STARK curve coefficient alpha */
 const CURVE_ALPHA = 1n;
@@ -56,11 +57,21 @@ function modField(value: bigint): bigint {
   return res >= 0n ? res : res + FIELD_PRIME;
 }
 
+function normalizePoint(point: Point): Point {
+  if (point.y > FIELD_HALF) {
+    return { x: point.x, y: FIELD_PRIME - point.y };
+  }
+  return point;
+}
+
 export function isPointOnCurve(point: Point): boolean {
   if (point.x <= 0n || point.y <= 0n) {
     return false;
   }
   if (point.x >= FIELD_PRIME || point.y >= FIELD_PRIME) {
+    return false;
+  }
+  if (point.y > FIELD_HALF) {
     return false;
   }
 
@@ -110,7 +121,7 @@ export function getPublicKey(privateKey: bigint): Point {
   const hex = Buffer.from(pubKey).toString('hex');
   const x = BigInt('0x' + hex.slice(2, 66)); // Skip '04' prefix
   const y = BigInt('0x' + hex.slice(66, 130));
-  return { x, y };
+  return normalizePoint({ x, y });
 }
 
 /**
@@ -217,10 +228,10 @@ function addPoints(p1: Point, p2: Point): Point {
   const result = point1.add(point2);
   const affine = result.toAffine();
   
-  return {
+  return normalizePoint({
     x: affine.x,
     y: affine.y,
-  };
+  });
 }
 
 /**

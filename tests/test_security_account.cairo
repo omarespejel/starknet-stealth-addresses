@@ -33,9 +33,10 @@ fn test_security_account_valid_keys_deploy_successfully() {
 #[test]
 fn test_security_account_constructor_validates_nonzero() {
     // This test documents that constructor validation exists.
-    // The StealthAccount constructor contains:
-    //   assert(pubkey_x != 0, Errors::INVALID_PUBLIC_KEY);
-    //   assert(pubkey_y != 0, Errors::INVALID_PUBLIC_KEY);
+    // The StealthAccount constructor validates:
+    //   - non-zero coordinates
+    //   - canonical Y
+    //   - on-curve checks (STRICT_CURVE_CHECK)
     // 
     // When invalid keys are passed, deployment fails with:
     //   'STEALTH: invalid public key'

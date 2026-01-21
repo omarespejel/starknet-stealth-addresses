@@ -4,12 +4,23 @@ use snforge_std::{start_cheat_caller_address, stop_cheat_caller_address};
 use starknet::contract_address_const;
 
 use starknet_stealth_addresses::interfaces::i_stealth_registry::IStealthRegistryDispatcherTrait;
+use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
+    IStealthRegistryAdminDispatcher, IStealthRegistryAdminDispatcherTrait
+};
 use starknet_stealth_addresses::interfaces::i_stealth_account_factory::IStealthAccountFactoryDispatcherTrait;
 use starknet_stealth_addresses::interfaces::i_stealth_account::{
     IStealthAccountDispatcher, IStealthAccountDispatcherTrait
 };
 
 use super::fixtures::{deploy_full_infrastructure, alice, bob, charlie, test_keys};
+
+fn disable_rate_limit(registry_addr: starknet::ContractAddress) {
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry_addr };
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry_addr, owner);
+    admin.set_min_announce_block_gap(0);
+    stop_cheat_caller_address(registry_addr);
+}
 
 #[test]
 fn test_integration_register_and_lookup() {
@@ -97,6 +108,7 @@ fn test_integration_multiple_recipients() {
 #[test]
 fn test_integration_multiple_payments_unlinkable() {
     let infra = deploy_full_infrastructure();
+    disable_rate_limit(infra.registry_address);
     
     let addr1 = infra.factory.deploy_stealth_account(
         test_keys::TEST_STEALTH_PUBKEY_X,
@@ -120,9 +132,30 @@ fn test_integration_multiple_payments_unlinkable() {
     assert(addr2 != addr3, 'addr2 != addr3');
     assert(addr1 != addr3, 'addr1 != addr3');
     
-    infra.registry.announce(0, 1, 1, addr1, 10, 0);
-    infra.registry.announce(0, 2, 2, addr2, 20, 0);
-    infra.registry.announce(0, 3, 3, addr3, 30, 0);
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr1,
+        10,
+        0
+    );
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr2,
+        20,
+        0
+    );
+    infra.registry.announce(
+        0,
+        test_keys::TEST_EPHEMERAL_PUBKEY_X,
+        test_keys::TEST_EPHEMERAL_PUBKEY_Y,
+        addr3,
+        30,
+        0
+    );
     
     assert(infra.registry.get_announcement_count() == 3, 'Three announcements');
 }

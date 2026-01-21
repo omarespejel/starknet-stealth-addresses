@@ -8,8 +8,19 @@ use starknet::contract_address_const;
 
 use starknet_stealth_addresses::interfaces::i_stealth_registry::IStealthRegistryDispatcherTrait;
 use starknet_stealth_addresses::contracts::stealth_registry::StealthRegistry;
+use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
+    IStealthRegistryAdminDispatcher, IStealthRegistryAdminDispatcherTrait
+};
 
 use super::fixtures::{deploy_registry, alice, bob, test_keys};
+
+fn disable_rate_limit(registry_addr: starknet::ContractAddress) {
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry_addr };
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry_addr, owner);
+    admin.set_min_announce_block_gap(0);
+    stop_cheat_caller_address(registry_addr);
+}
 
 // ============================================================================
 // META-ADDRESS REGISTRATION TESTS
@@ -135,6 +146,7 @@ fn test_unit_registry_announce() {
 #[test]
 fn test_unit_registry_multiple_announcements() {
     let (_, registry) = deploy_registry();
+    disable_rate_limit(registry.contract_address);
     
     let stealth_addr = contract_address_const::<'stealth1'>();
     

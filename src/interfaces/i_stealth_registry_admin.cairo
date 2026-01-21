@@ -13,4 +13,13 @@ pub trait IStealthRegistryAdmin<TContractState> {
 
     /// Get registry owner
     fn get_owner(self: @TContractState) -> ContractAddress;
+
+    /// Get pending owner (two-step transfer)
+    fn get_pending_owner(self: @TContractState) -> ContractAddress;
+
+    /// Begin ownership transfer (two-step)
+    fn transfer_ownership(ref self: TContractState, new_owner: ContractAddress);
+
+    /// Accept ownership transfer
+    fn accept_ownership(ref self: TContractState);
 }

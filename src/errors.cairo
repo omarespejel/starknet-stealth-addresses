@@ -31,6 +31,12 @@ pub mod Errors {
 
     /// Announce rate limited
     pub const RATE_LIMITED: felt252 = 'STEALTH: rate limited';
+
+    /// Pending owner not set
+    pub const NO_PENDING_OWNER: felt252 = 'STEALTH: no pending owner';
+
+    /// Announcement count overflow
+    pub const ANNOUNCEMENT_COUNT_OVERFLOW: felt252 = 'STEALTH: announcement overflow';
     
     // ========================================================================
     // Account Errors

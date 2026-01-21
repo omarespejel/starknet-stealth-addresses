@@ -28,23 +28,21 @@ The Starknet Stealth Address Protocol provides **recipient unlinkability** - the
 
 **Status**: RESOLVED - Using production-grade approach
 
-**Description**: Public key validation uses a **defense-in-depth** strategy that relies on Starknet's native ECDSA builtin rather than custom on-curve checks.
+**Description**: Public key validation now enforces **canonical Y** and **on-curve checks** at registration/deployment, with ECDSA validation at spend time as an additional safety layer.
 
 **Security Model**:
 
 | Layer | What | Protection |
 |-------|------|------------|
-| **Registration** | `is_valid_public_key()` | Rejects zero coordinates |
-| **ECDH (off-chain)** | SDK with `@scure/starknet` | Validates curve points |
+| **Registration** | `is_valid_public_key()` | Rejects zero, non-canonical Y, and off-curve points |
+| **ECDH (off-chain)** | SDK with `@scure/starknet` | Validates curve points + canonical Y |
 | **Spending** | `check_ecdsa_signature` builtin | Rejects invalid keys |
 
-**Why Custom On-Curve Check is NOT Needed**:
+**Rationale for Early Validation**:
 
-1. **ECDSA builtin handles it**: Starknet's native `check_ecdsa_signature` (line 221 of stealth_account.cairo) validates public keys during signature verification. Invalid keys cause verification to fail.
-
-2. **Self-griefing only**: An attacker registering an invalid public key can never spend from resulting stealth addresses - their signatures will never verify.
-
-3. **Off-chain ECDH validation**: The SDK uses `@scure/starknet` which validates curve points during ECDH computation.
+1. **Registry hygiene**: Prevents invalid points from polluting the registry.
+2. **ECDH safety**: Ensures off-chain ECDH never operates on invalid points.
+3. **Defense in depth**: Keeps ECDSA validation as a backstop at spend time.
 
 ```cairo
 // stealth_account.cairo:221 - Native ECDSA validates the key

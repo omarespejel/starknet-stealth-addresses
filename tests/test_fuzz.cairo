@@ -3,14 +3,20 @@
 /// These tests use random inputs to find edge cases and vulnerabilities.
 /// snforge runs each test multiple times with different random values.
 
-use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, start_cheat_caller_address};
+use snforge_std::{
+    declare, ContractClassTrait, DeclareResultTrait, start_cheat_caller_address, stop_cheat_caller_address
+};
 use starknet::{ContractAddress, contract_address_const};
 use starknet_stealth_addresses::interfaces::i_stealth_registry::{
     IStealthRegistryDispatcher, IStealthRegistryDispatcherTrait
 };
+use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
+    IStealthRegistryAdminDispatcher, IStealthRegistryAdminDispatcherTrait
+};
 use starknet_stealth_addresses::interfaces::i_stealth_account_factory::{
     IStealthAccountFactoryDispatcher, IStealthAccountFactoryDispatcherTrait
 };
+use starknet_stealth_addresses::crypto::constants::is_valid_public_key;
 use starknet_stealth_addresses::crypto::view_tag::compute_view_tag;
 
 // ============================================================================
@@ -30,16 +36,24 @@ fn deploy_factory() -> IStealthAccountFactoryDispatcher {
     IStealthAccountFactoryDispatcher { contract_address: address }
 }
 
+fn disable_rate_limit(registry_address: ContractAddress) {
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry_address };
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry_address, owner);
+    admin.set_min_announce_block_gap(0);
+    stop_cheat_caller_address(registry_address);
+}
+
 // ============================================================================
 // Fuzz Tests - Registry
 // ============================================================================
 
-/// Fuzz test: Any non-zero public key should be registerable
+/// Fuzz test: Any valid public key should be registerable
 #[test]
 #[fuzzer(runs: 100, seed: 12345)]
 fn test_fuzz_registry_accepts_nonzero_keys(x: felt252, y: felt252) {
-    // Skip zero values (those should be rejected)
-    if x == 0 || y == 0 {
+    // Skip invalid values
+    if !is_valid_public_key(x, y) {
         return;
     }
     
@@ -66,8 +80,8 @@ fn test_fuzz_registry_announce_accepts_valid_keys(
     view_tag: u8,
     metadata: felt252
 ) {
-    // Skip zero values
-    if eph_x == 0 || eph_y == 0 {
+    // Skip invalid values
+    if !is_valid_public_key(eph_x, eph_y) {
         return;
     }
     
@@ -90,11 +104,12 @@ fn test_fuzz_registry_spam_pattern(
     view_tag: u8,
     count: u8
 ) {
-    if eph_x == 0 || eph_y == 0 {
+    if !is_valid_public_key(eph_x, eph_y) {
         return;
     }
 
     let registry = deploy_registry();
+    disable_rate_limit(registry.contract_address);
     let stealth_addr = contract_address_const::<0xabc>();
 
     let n: u32 = (count % 20).into();
@@ -202,7 +217,7 @@ fn test_fuzz_view_tag_deterministic(x: felt252, y: felt252) {
 #[test]
 #[fuzzer(runs: 50, seed: 66666)]
 fn test_invariant_registered_user_can_lookup(x: felt252, y: felt252) {
-    if x == 0 || y == 0 {
+    if !is_valid_public_key(x, y) {
         return;
     }
     
@@ -229,7 +244,7 @@ fn test_invariant_announcement_count_increases(
     eph_y: felt252,
     num_announcements: u8
 ) {
-    if eph_x == 0 || eph_y == 0 {
+    if !is_valid_public_key(eph_x, eph_y) {
         return;
     }
     
@@ -240,6 +255,7 @@ fn test_invariant_announcement_count_increases(
     }
     
     let registry = deploy_registry();
+    disable_rate_limit(registry.contract_address);
     let stealth_addr = contract_address_const::<0xabc>();
     
     let initial_count = registry.get_announcement_count();

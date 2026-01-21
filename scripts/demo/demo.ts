@@ -108,6 +108,8 @@ const FACTORY_ABI = [
 // ============================================================================
 
 const CURVE_ORDER = BigInt('0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f');
+const FIELD_PRIME = BigInt('0x800000000000011000000000000000000000000000000000000000000000001');
+const FIELD_HALF = (FIELD_PRIME - 1n) / 2n;
 
 function generatePrivateKey(): bigint {
   const randomBytes = new Uint8Array(32);
@@ -121,10 +123,12 @@ function getPublicKey(privateKey: bigint): { x: bigint; y: bigint } {
   const privKeyHex = privateKey.toString(16).padStart(64, '0');
   const pubKey = ec.starkCurve.getPublicKey(privKeyHex, false);
   const hex = Buffer.from(pubKey).toString('hex');
-  return {
-    x: BigInt('0x' + hex.slice(2, 66)),
-    y: BigInt('0x' + hex.slice(66, 130)),
-  };
+  const x = BigInt('0x' + hex.slice(2, 66));
+  let y = BigInt('0x' + hex.slice(66, 130));
+  if (y > FIELD_HALF) {
+    y = FIELD_PRIME - y;
+  }
+  return { x, y };
 }
 
 function computeSharedSecret(scalar: bigint, point: { x: bigint; y: bigint }): { x: bigint; y: bigint } {
@@ -144,12 +148,19 @@ function computeViewTag(secret: { x: bigint; y: bigint }): number {
   return Number(poseidonHashMany([secret.x, secret.y]) % 256n);
 }
 
+function normalizePoint(point: { x: bigint; y: bigint }): { x: bigint; y: bigint } {
+  if (point.y > FIELD_HALF) {
+    return { x: point.x, y: FIELD_PRIME - point.y };
+  }
+  return point;
+}
+
 function addPoints(p1: { x: bigint; y: bigint }, p2: { x: bigint; y: bigint }): { x: bigint; y: bigint } {
   const point1 = ec.starkCurve.ProjectivePoint.fromAffine({ x: p1.x, y: p1.y });
   const point2 = ec.starkCurve.ProjectivePoint.fromAffine({ x: p2.x, y: p2.y });
   const result = point1.add(point2);
   const affine = result.toAffine();
-  return { x: affine.x, y: affine.y };
+  return normalizePoint({ x: affine.x, y: affine.y });
 }
 
 // ============================================================================
