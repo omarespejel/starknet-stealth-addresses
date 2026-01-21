@@ -9,6 +9,7 @@ import {
   createMetaAddress,
   generateStealthAddress,
   StealthScanner,
+  normalizePrivateKey,
 } from '../../sdk/src/index.js';
 
 loadEnv();
@@ -123,13 +124,17 @@ async function main() {
   });
 
   // Recipient setup
-  const spendingPrivKey = 123456789n;
-  const meta = createMetaAddress(spendingPrivKey);
+  const spendingPrivKey = normalizePrivateKey(123456789n);
+  const viewingPrivKey = normalizePrivateKey(987654321n);
+  const meta = createMetaAddress(spendingPrivKey, viewingPrivKey);
 
   console.log('[*] Registering meta-address...');
   const registerTx = await registry.register_stealth_meta_address(
     meta.spendingKey.x,
-    meta.spendingKey.y
+    meta.spendingKey.y,
+    meta.viewingKey.x,
+    meta.viewingKey.y,
+    meta.schemeId
   );
   await provider.waitForTransaction(registerTx.transaction_hash);
   console.log('[OK] Meta-address registered');
@@ -150,7 +155,7 @@ async function main() {
 
   console.log('[*] Announcing payment...');
   const announceTx = await registry.announce(
-    0,
+    meta.schemeId,
     stealth.ephemeralPubkey.x,
     stealth.ephemeralPubkey.y,
     stealth.stealthAddress,
@@ -170,7 +175,7 @@ async function main() {
   await scanner.initialize(registrySierra.abi, accountClassHash);
 
   console.log('[*] Scanning for announcements...');
-  const results = await scanner.scan(meta.spendingKey, spendingPrivKey, spendingPrivKey, 0);
+  const results = await scanner.scan(meta.spendingKey, viewingPrivKey, spendingPrivKey, 0);
 
   if (results.length === 0) {
     throw new Error('No matching announcements found');

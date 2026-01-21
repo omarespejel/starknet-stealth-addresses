@@ -17,20 +17,19 @@ export interface Point {
 /**
  * Stealth Meta-Address
  * 
- * Contains the spending public key that recipients publish
- * to receive stealth payments. The current on-chain registry
- * supports the single-key scheme (viewing key = spending key).
+ * Contains the spending and viewing public keys that recipients publish
+ * to receive stealth payments. Dual-key is supported on-chain.
  * 
  * For DKSAP:
  * - spendingKey: K = k*G (recipient's spending public key)
- * - viewingKey: V = K (single-key scheme)
+ * - viewingKey: V = v*G (viewing public key)
  */
 export interface StealthMetaAddress {
   /** Spending public key (x, y) */
   spendingKey: Point;
-  /** Viewing public key (x, y) - same as spending key for current scheme */
+  /** Viewing public key (x, y) */
   viewingKey: Point;
-  /** Scheme ID (0 = single-key) */
+  /** Scheme ID (0 = single-key, 1 = dual-key) */
   schemeId: number;
 }
 
@@ -132,4 +131,24 @@ export interface AddressComputationInput {
   salt: bigint;
   /** Constructor calldata [pubkey_x, pubkey_y] */
   constructorCalldata: [bigint, bigint];
+}
+
+/**
+ * Withdrawal planning options
+ */
+export interface WithdrawalPlanOptions {
+  /** Number of splits to create */
+  splits?: number;
+  /** Minimum delay in milliseconds */
+  minDelayMs?: number;
+  /** Maximum delay in milliseconds */
+  maxDelayMs?: number;
+}
+
+/**
+ * A planned withdrawal step
+ */
+export interface WithdrawalStep {
+  amount: bigint;
+  delayMs: number;
 }

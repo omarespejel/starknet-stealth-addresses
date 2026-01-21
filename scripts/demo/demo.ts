@@ -46,8 +46,11 @@ const REGISTRY_ABI = [
     type: "function",
     name: "register_stealth_meta_address",
     inputs: [
-      { name: "spending_key_x", type: "felt" },
-      { name: "spending_key_y", type: "felt" }
+      { name: "spending_pubkey_x", type: "felt" },
+      { name: "spending_pubkey_y", type: "felt" },
+      { name: "viewing_pubkey_x", type: "felt" },
+      { name: "viewing_pubkey_y", type: "felt" },
+      { name: "scheme_id", type: "felt" }
     ],
     outputs: []
   },
@@ -55,7 +58,13 @@ const REGISTRY_ABI = [
     type: "function",
     name: "get_stealth_meta_address",
     inputs: [{ name: "user", type: "felt" }],
-    outputs: [{ name: "x", type: "felt" }, { name: "y", type: "felt" }]
+    outputs: [
+      { name: "scheme_id", type: "felt" },
+      { name: "spending_pubkey_x", type: "felt" },
+      { name: "spending_pubkey_y", type: "felt" },
+      { name: "viewing_pubkey_x", type: "felt" },
+      { name: "viewing_pubkey_y", type: "felt" }
+    ]
   },
   {
     type: "function",
@@ -115,20 +124,30 @@ function generatePrivateKey(): bigint {
   const randomBytes = new Uint8Array(32);
   crypto.getRandomValues(randomBytes);
   let key = BigInt('0x' + Buffer.from(randomBytes).toString('hex'));
-  return (key % (CURVE_ORDER - 1n)) + 1n;
+  key = (key % (CURVE_ORDER - 1n)) + 1n;
+  return normalizePrivateKey(key);
 }
 
-function getPublicKey(privateKey: bigint): { x: bigint; y: bigint } {
-  // Convert bigint to hex string (without 0x prefix, padded to 64 chars)
+function getRawPublicKey(privateKey: bigint): { x: bigint; y: bigint } {
   const privKeyHex = privateKey.toString(16).padStart(64, '0');
   const pubKey = ec.starkCurve.getPublicKey(privKeyHex, false);
   const hex = Buffer.from(pubKey).toString('hex');
   const x = BigInt('0x' + hex.slice(2, 66));
-  let y = BigInt('0x' + hex.slice(66, 130));
-  if (y > FIELD_HALF) {
-    y = FIELD_PRIME - y;
-  }
+  const y = BigInt('0x' + hex.slice(66, 130));
   return { x, y };
+}
+
+function normalizePrivateKey(privateKey: bigint): bigint {
+  const raw = getRawPublicKey(privateKey);
+  if (raw.y > FIELD_HALF) {
+    return CURVE_ORDER - privateKey;
+  }
+  return privateKey;
+}
+
+function getPublicKey(privateKey: bigint): { x: bigint; y: bigint } {
+  const raw = getRawPublicKey(privateKey);
+  return normalizePoint(raw);
 }
 
 function computeSharedSecret(scalar: bigint, point: { x: bigint; y: bigint }): { x: bigint; y: bigint } {
@@ -160,7 +179,7 @@ function addPoints(p1: { x: bigint; y: bigint }, p2: { x: bigint; y: bigint }): 
   const point2 = ec.starkCurve.ProjectivePoint.fromAffine({ x: p2.x, y: p2.y });
   const result = point1.add(point2);
   const affine = result.toAffine();
-  return normalizePoint({ x: affine.x, y: affine.y });
+  return { x: affine.x, y: affine.y };
 }
 
 // ============================================================================
@@ -237,7 +256,9 @@ async function main() {
 
   // Generate Alice's keys
   const aliceSpendingPrivKey = generatePrivateKey();
+  const aliceViewingPrivKey = generatePrivateKey();
   const aliceSpendingPubKey = getPublicKey(aliceSpendingPrivKey);
+  const aliceViewingPubKey = getPublicKey(aliceViewingPrivKey);
   
   console.log('   [*] Alice generates her spending key pair:');
   console.log(`       Private: ${num.toHex(aliceSpendingPrivKey).slice(0, 20)}...`);
@@ -245,12 +266,21 @@ async function main() {
   console.log(`       Public Y: ${num.toHex(aliceSpendingPubKey.y).slice(0, 20)}...`);
   console.log('');
 
+  console.log('   [*] Alice generates her viewing key pair:');
+  console.log(`       Private: ${num.toHex(aliceViewingPrivKey).slice(0, 20)}...`);
+  console.log(`       Public X: ${num.toHex(aliceViewingPubKey.x).slice(0, 20)}...`);
+  console.log(`       Public Y: ${num.toHex(aliceViewingPubKey.y).slice(0, 20)}...`);
+  console.log('');
+
   // Register meta-address
   console.log('   [*] Registering meta-address on-chain...');
   try {
     const registerTx = await registry.register_stealth_meta_address(
       num.toHex(aliceSpendingPubKey.x),
-      num.toHex(aliceSpendingPubKey.y)
+      num.toHex(aliceSpendingPubKey.y),
+      num.toHex(aliceViewingPubKey.x),
+      num.toHex(aliceViewingPubKey.y),
+      1
     );
     console.log(`       TX: ${registerTx.transaction_hash}`);
     await provider.waitForTransaction(registerTx.transaction_hash);
@@ -281,7 +311,7 @@ async function main() {
   console.log('');
 
   // Compute shared secret: S = r * K (ephemeral_priv * alice_pub)
-  const sharedSecret = computeSharedSecret(bobEphemeralPrivKey, aliceSpendingPubKey);
+  const sharedSecret = computeSharedSecret(bobEphemeralPrivKey, aliceViewingPubKey);
   console.log('   [*] Bob computes shared secret (ECDH):');
   console.log(`       S = r * K`);
   console.log(`       Secret X: ${num.toHex(sharedSecret.x).slice(0, 20)}...`);
@@ -289,8 +319,8 @@ async function main() {
 
   // Derive stealth public key: P = K + hash(S)*G
   const hashScalar = hashSharedSecret(sharedSecret);
-  const hashPoint = getPublicKey(hashScalar);
-  const stealthPubKey = addPoints(aliceSpendingPubKey, hashPoint);
+  const hashPoint = getRawPublicKey(hashScalar);
+  const stealthPubKey = normalizePoint(addPoints(aliceSpendingPubKey, hashPoint));
   
   console.log('   [*] Bob derives stealth public key:');
   console.log(`       P = K + hash(S)*G`);
@@ -351,7 +381,7 @@ async function main() {
   console.log('   [*] Publishing announcement on-chain...');
   try {
     const announceTx = await registry.announce(
-      0, // scheme_id
+      1, // scheme_id (dual-key)
       num.toHex(bobEphemeralPubKey.x),
       num.toHex(bobEphemeralPubKey.y),
       stealthAddress || '0x1',
@@ -384,7 +414,7 @@ async function main() {
   console.log('');
   
   // Alice computes shared secret: S' = k * R
-  const aliceSharedSecret = computeSharedSecret(aliceSpendingPrivKey, bobEphemeralPubKey);
+  const aliceSharedSecret = computeSharedSecret(aliceViewingPrivKey, bobEphemeralPubKey);
   const aliceViewTag = computeViewTag(aliceSharedSecret);
   
   console.log('   [*] Alice computes shared secret:');
@@ -396,7 +426,9 @@ async function main() {
     console.log('');
     
     // Derive spending key
-    const aliceStealthPrivKey = (aliceSpendingPrivKey + hashSharedSecret(aliceSharedSecret)) % CURVE_ORDER;
+  const aliceStealthPrivKey = normalizePrivateKey(
+    (aliceSpendingPrivKey + hashSharedSecret(aliceSharedSecret)) % CURVE_ORDER
+  );
     console.log('   [*] Alice derives stealth private key:');
     console.log(`       p = k + hash(S) mod n`);
     console.log(`       Private key: ${num.toHex(aliceStealthPrivKey).slice(0, 20)}...`);

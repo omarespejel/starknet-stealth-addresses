@@ -15,7 +15,8 @@
  * 
  * // Recipient: Create meta-address
  * const spendingKey = generatePrivateKey();
- * const metaAddress = createMetaAddress(spendingKey);
+ * const viewingKey = generatePrivateKey();
+ * const metaAddress = createMetaAddress(spendingKey, viewingKey);
  * 
  * // Sender: Generate stealth address
  * const result = generateStealthAddress(
@@ -26,7 +27,7 @@
  * 
  * // Recipient: Scan for payments
  * const scanner = new StealthScanner(config);
- * const payments = await scanner.scan(spendingPubkey, spendingKey, spendingKey);
+ * const payments = await scanner.scan(spendingPubkey, viewingKey, spendingKey);
  * ```
  * 
  * @packageDocumentation
@@ -42,11 +43,14 @@ export type {
   ScanResult,
   StealthConfig,
   AddressComputationInput,
+  WithdrawalPlanOptions,
+  WithdrawalStep,
 } from './types.js';
 
 // Key generation and ECDH
 export {
   generatePrivateKey,
+  normalizePrivateKey,
   getPublicKey,
   generateEphemeralKeyPair,
   createMetaAddress,
@@ -72,10 +76,13 @@ export {
   expectedFalsePositiveRate,
 } from './scanner.js';
 
+// Withdrawal helpers
+export { planWithdrawals } from './withdrawal.js';
+
 // Constants
 export const SCHEME_ID = {
   SINGLE_KEY: 0,
-  RESERVED_DUAL_KEY: 1,
+  DUAL_KEY: 1,
 } as const;
 
 export const VIEW_TAG_BITS = 8;

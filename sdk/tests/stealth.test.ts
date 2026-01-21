@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import fc from 'fast-check';
 import { hash } from 'starknet';
 import {
   computeStealthContractAddress,
@@ -6,9 +7,14 @@ import {
   decodeMetaAddress,
   generateStealthAddress,
   getPublicKey,
+  deriveStealthPrivateKey,
+  deriveStealthPubkey,
   computeSharedSecret,
+  computeViewTag,
   isPointOnCurve,
+  normalizePrivateKey,
   verifyStealthAddress,
+  checkViewTag,
 } from '../src/stealth.js';
 import { StealthScanner } from '../src/scanner.js';
 
@@ -18,6 +24,10 @@ const config = {
   rpcUrl: 'http://localhost:9545',
   chainId: '0x534e5f5345504f4c4941', // SN_SEPOLIA
 };
+
+const CURVE_ORDER = BigInt(
+  '0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f'
+);
 
 describe('SDK address computation', () => {
   it('matches Starknet calculateContractAddressFromHash', () => {
@@ -50,12 +60,114 @@ describe('SDK curve validation', () => {
     expect(() => computeSharedSecret(1n, { x: 0n, y: 1n })).toThrow();
   });
 
-  it('rejects dual-key meta-address creation', () => {
-    expect(() => createMetaAddress(1n, 2n)).toThrow();
+  it('accepts dual-key meta-address creation', () => {
+    const meta = createMetaAddress(1n, 2n);
+    expect(meta.schemeId).toBe(1);
+    expect(meta.spendingKey.x).not.toBe(meta.viewingKey.x);
   });
 
-  it('rejects non-zero scheme id in decodeMetaAddress', () => {
+  it('rejects scheme 1 without viewing key', () => {
     expect(() => decodeMetaAddress('0x1', '0x2', undefined, undefined, 1)).toThrow();
+  });
+
+  it('decodes dual-key meta-address', () => {
+    const spending = getPublicKey(1n);
+    const viewing = getPublicKey(2n);
+    const meta = decodeMetaAddress(
+      `0x${spending.x.toString(16)}`,
+      `0x${spending.y.toString(16)}`,
+      `0x${viewing.x.toString(16)}`,
+      `0x${viewing.y.toString(16)}`,
+      1
+    );
+    expect(meta.schemeId).toBe(1);
+    expect(meta.viewingKey.x).toBe(viewing.x);
+  });
+
+  it('returns false on invalid ephemeral key for view tag', () => {
+    const validPrivKey = 1n;
+    const invalidPoint = { x: 0n, y: 1n };
+    expect(checkViewTag(validPrivKey, invalidPoint, 0)).toBe(false);
+  });
+
+  it('returns null on invalid ephemeral key for verify', () => {
+    const spendingPubkey = getPublicKey(1n);
+    const invalidPoint = { x: 0n, y: 1n };
+    const result = verifyStealthAddress(
+      spendingPubkey,
+      1n,
+      invalidPoint,
+      '0x1',
+      config.factoryAddress,
+      '0x1234'
+    );
+    expect(result).toBeNull();
+  });
+
+  it('stealth pubkey matches derived private key', () => {
+    const spendingPrivKey = 1n;
+    const viewingPrivKey = 2n;
+    const meta = createMetaAddress(spendingPrivKey, viewingPrivKey);
+    const result = generateStealthAddress(meta, config.factoryAddress, '0x1234');
+    const derivedPriv = deriveStealthPrivateKey(spendingPrivKey, result.sharedSecret);
+    const derivedPub = getPublicKey(derivedPriv);
+    expect(derivedPub.x).toBe(result.stealthPubkey.x);
+    expect(derivedPub.y).toBe(result.stealthPubkey.y);
+  });
+});
+
+describe('SDK property tests', () => {
+  const keyArb = fc.oneof(
+    fc.constant(1n),
+    fc.constant(CURVE_ORDER - 1n),
+    fc.bigInt({ min: 1n, max: CURVE_ORDER - 1n })
+  );
+
+  it('ECDH is symmetric', () => {
+    fc.assert(
+      fc.property(keyArb, keyArb, (aRaw, bRaw) => {
+        const a = normalizePrivateKey(aRaw);
+        const b = normalizePrivateKey(bRaw);
+        const A = getPublicKey(a);
+        const B = getPublicKey(b);
+        const s1 = computeSharedSecret(a, B);
+        const s2 = computeSharedSecret(b, A);
+        return s1.x === s2.x && s1.y === s2.y;
+      }),
+      { numRuns: 500 }
+    );
+  });
+
+  it('derived pubkey matches derived private key', () => {
+    fc.assert(
+      fc.property(keyArb, keyArb, keyArb, (kRaw, vRaw, rRaw) => {
+        const k = normalizePrivateKey(kRaw);
+        const v = normalizePrivateKey(vRaw);
+        const r = normalizePrivateKey(rRaw);
+        const K = getPublicKey(k);
+        const V = getPublicKey(v);
+        const shared = computeSharedSecret(r, V);
+        const P = deriveStealthPubkey(K, shared);
+        const p = deriveStealthPrivateKey(k, shared);
+        const P2 = getPublicKey(p);
+        return P.x === P2.x && P.y === P2.y;
+      }),
+      { numRuns: 500 }
+    );
+  });
+
+  it('view tag round-trip holds', () => {
+    fc.assert(
+      fc.property(keyArb, keyArb, (vRaw, rRaw) => {
+        const v = normalizePrivateKey(vRaw);
+        const r = normalizePrivateKey(rRaw);
+        const R = getPublicKey(r);
+        const shared = computeSharedSecret(r, getPublicKey(v));
+        const tag = computeViewTag(shared);
+        return checkViewTag(v, R, tag);
+      }),
+      { numRuns: 500 }
+    );
   });
 });
 

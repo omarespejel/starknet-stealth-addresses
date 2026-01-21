@@ -104,7 +104,29 @@ export function generatePrivateKey(): bigint {
   let key = BigInt('0x' + Buffer.from(randomBytes).toString('hex'));
   // Ensure key is in valid range [1, n-1]
   key = key % (CURVE_ORDER - 1n) + 1n;
-  return key;
+  return normalizePrivateKey(key);
+}
+
+function getRawPublicKey(privateKey: bigint): Point {
+  const privHex = num.toHex(privateKey);
+  const pubKey = ec.starkCurve.getPublicKey(privHex, false);
+  // pubKey is Uint8Array in uncompressed format: 04 | x | y
+  const hex = Buffer.from(pubKey).toString('hex');
+  const x = BigInt('0x' + hex.slice(2, 66)); // Skip '04' prefix
+  const y = BigInt('0x' + hex.slice(66, 130));
+  return { x, y };
+}
+
+/**
+ * Normalize a private key so its public key is canonical.
+ */
+export function normalizePrivateKey(privateKey: bigint): bigint {
+  assertValidScalar(privateKey, 'private key');
+  const raw = getRawPublicKey(privateKey);
+  if (raw.y > FIELD_HALF) {
+    return CURVE_ORDER - privateKey;
+  }
+  return privateKey;
 }
 
 /**
@@ -115,13 +137,8 @@ export function generatePrivateKey(): bigint {
  */
 export function getPublicKey(privateKey: bigint): Point {
   assertValidScalar(privateKey, 'private key');
-  const privHex = num.toHex(privateKey);
-  const pubKey = ec.starkCurve.getPublicKey(privHex, false);
-  // pubKey is Uint8Array in uncompressed format: 04 | x | y
-  const hex = Buffer.from(pubKey).toString('hex');
-  const x = BigInt('0x' + hex.slice(2, 66)); // Skip '04' prefix
-  const y = BigInt('0x' + hex.slice(66, 130));
-  return normalizePoint({ x, y });
+  const raw = getRawPublicKey(privateKey);
+  return normalizePoint(raw);
 }
 
 /**
@@ -138,23 +155,27 @@ export function generateEphemeralKeyPair(): EphemeralKeyPair {
  * 
  * @param spendingPrivKey - Spending private key
  * @param viewingPrivKey - Viewing private key (optional, defaults to spending key)
+ * @returns Meta-address with canonical public keys
+ *
+ * Security: treat private keys as sensitive and avoid logging them.
  */
 export function createMetaAddress(
   spendingPrivKey: bigint,
   viewingPrivKey?: bigint
 ): StealthMetaAddress {
-  assertValidScalar(spendingPrivKey, 'spending private key');
+  const normalizedSpendingPrivKey = normalizePrivateKey(spendingPrivKey);
+  const normalizedViewingPrivKey = viewingPrivKey
+    ? normalizePrivateKey(viewingPrivKey)
+    : normalizedSpendingPrivKey;
 
-  if (viewingPrivKey && viewingPrivKey !== spendingPrivKey) {
-    throw new Error('Dual-key meta-address not supported on-chain yet');
-  }
+  const spendingKey = getPublicKey(normalizedSpendingPrivKey);
+  const viewingKey = getPublicKey(normalizedViewingPrivKey);
 
-  const spendingKey = getPublicKey(spendingPrivKey);
-  
   return {
     spendingKey,
-    viewingKey: spendingKey,
-    schemeId: 0, // single-key only
+    viewingKey,
+    schemeId:
+      viewingPrivKey && normalizedViewingPrivKey !== normalizedSpendingPrivKey ? 1 : 0,
   };
 }
 
@@ -172,7 +193,7 @@ export function createMetaAddress(
  * @returns Shared secret point
  */
 export function computeSharedSecret(scalar: bigint, point: Point): Point {
-  assertValidScalar(scalar, 'ECDH scalar');
+  const normalizedScalar = normalizePrivateKey(scalar);
   assertPointOnCurve(point, 'ECDH public key');
 
   // Use starknet's ec.starkCurve for point multiplication
@@ -181,7 +202,7 @@ export function computeSharedSecret(scalar: bigint, point: Point): Point {
     y: point.y,
   });
   
-  const result = pointHex.multiply(scalar);
+  const result = pointHex.multiply(normalizedScalar);
   const affine = result.toAffine();
   
   return {
@@ -198,7 +219,9 @@ export function computeSharedSecret(scalar: bigint, point: Point): Point {
 export function hashSharedSecret(sharedSecret: Point): bigint {
   const hashResult = poseidonHashMany([sharedSecret.x, sharedSecret.y]);
   // Reduce modulo curve order to get valid scalar
-  return hashResult % CURVE_ORDER;
+  const hashScalar = hashResult % CURVE_ORDER;
+  assertValidScalar(hashScalar, 'shared secret hash');
+  return hashScalar;
 }
 
 /**
@@ -228,10 +251,10 @@ function addPoints(p1: Point, p2: Point): Point {
   const result = point1.add(point2);
   const affine = result.toAffine();
   
-  return normalizePoint({
+  return {
     x: affine.x,
     y: affine.y,
-  });
+  };
 }
 
 /**
@@ -249,10 +272,10 @@ export function deriveStealthPubkey(
 ): Point {
   // Compute hash(S) * G
   const hashScalar = hashSharedSecret(sharedSecret);
-  const hashPoint = getPublicKey(hashScalar);
+  const hashPoint = getRawPublicKey(hashScalar);
   
   // P = K + hash(S)*G
-  return addPoints(spendingPubkey, hashPoint);
+  return normalizePoint(addPoints(spendingPubkey, hashPoint));
 }
 
 /**
@@ -270,8 +293,8 @@ export function generateStealthAddress(
   factoryAddress: string,
   accountClassHash: string
 ): StealthAddressResult {
-  if (metaAddress.schemeId !== 0) {
-    throw new Error('Unsupported scheme_id: only 0 is supported');
+  if (metaAddress.schemeId !== 0 && metaAddress.schemeId !== 1) {
+    throw new Error('Unsupported scheme_id: only 0 or 1 is supported');
   }
   assertPointOnCurve(metaAddress.spendingKey, 'spending public key');
   assertPointOnCurve(metaAddress.viewingKey, 'viewing public key');
@@ -353,13 +376,17 @@ export function computeStealthContractAddress(
  * @param spendingPrivKey - Recipient's spending private key (k)
  * @param sharedSecret - Shared secret (S = v*R = r*V)
  * @returns The derived spending private key for this stealth address
+ *
+ * Security: keep derived keys in memory only as long as needed.
  */
 export function deriveStealthPrivateKey(
   spendingPrivKey: bigint,
   sharedSecret: Point
 ): bigint {
+  const normalizedSpendingPrivKey = normalizePrivateKey(spendingPrivKey);
   const hashScalar = hashSharedSecret(sharedSecret);
-  return (spendingPrivKey + hashScalar) % CURVE_ORDER;
+  const derived = (normalizedSpendingPrivKey + hashScalar) % CURVE_ORDER;
+  return normalizePrivateKey(derived);
 }
 
 /**
@@ -377,11 +404,14 @@ export function checkViewTag(
   ephemeralPubkey: Point,
   announcedViewTag: number
 ): boolean {
-  // Compute S' = v * R
-  const sharedSecret = computeSharedSecret(viewingPrivKey, ephemeralPubkey);
-  const computedViewTag = computeViewTag(sharedSecret);
-  
-  return computedViewTag === announcedViewTag;
+  try {
+    // Compute S' = v * R
+    const sharedSecret = computeSharedSecret(viewingPrivKey, ephemeralPubkey);
+    const computedViewTag = computeViewTag(sharedSecret);
+    return computedViewTag === announcedViewTag;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -405,28 +435,32 @@ export function verifyStealthAddress(
   factoryAddress: string,
   accountClassHash: string
 ): Point | null {
-  // Compute S' = v * R
-  const sharedSecret = computeSharedSecret(viewingPrivKey, ephemeralPubkey);
-  
-  // Derive expected stealth pubkey: P' = K + hash(S')*G
-  const stealthPubkey = deriveStealthPubkey(spendingPubkey, sharedSecret);
-  
-  // Compute salt
-  const salt = poseidonHashMany([ephemeralPubkey.x, ephemeralPubkey.y]);
-  
-  // Compute expected address
-  const expectedAddress = computeStealthContractAddress({
-    classHash: accountClassHash,
-    deployerAddress: factoryAddress,
-    salt,
-    constructorCalldata: [stealthPubkey.x, stealthPubkey.y],
-  });
-  
-  // Compare addresses (case-insensitive hex comparison)
-  if (expectedAddress.toLowerCase() === announcedStealthAddress.toLowerCase()) {
-    return sharedSecret;
+  try {
+    // Compute S' = v * R
+    const sharedSecret = computeSharedSecret(viewingPrivKey, ephemeralPubkey);
+
+    // Derive expected stealth pubkey: P' = K + hash(S')*G
+    const stealthPubkey = deriveStealthPubkey(spendingPubkey, sharedSecret);
+
+    // Compute salt
+    const salt = poseidonHashMany([ephemeralPubkey.x, ephemeralPubkey.y]);
+
+    // Compute expected address
+    const expectedAddress = computeStealthContractAddress({
+      classHash: accountClassHash,
+      deployerAddress: factoryAddress,
+      salt,
+      constructorCalldata: [stealthPubkey.x, stealthPubkey.y],
+    });
+
+    // Compare addresses (case-insensitive hex comparison)
+    if (expectedAddress.toLowerCase() === announcedStealthAddress.toLowerCase()) {
+      return sharedSecret;
+    }
+  } catch {
+    return null;
   }
-  
+
   return null;
 }
 
@@ -463,8 +497,8 @@ export function decodeMetaAddress(
   viewingY?: string,
   schemeId: number = 0
 ): StealthMetaAddress {
-  if (schemeId !== 0) {
-    throw new Error('Unsupported scheme_id: only 0 is supported');
+  if (schemeId !== 0 && schemeId !== 1) {
+    throw new Error('Unsupported scheme_id: only 0 or 1 is supported');
   }
 
   const spendingKey: Point = {
@@ -472,10 +506,35 @@ export function decodeMetaAddress(
     y: BigInt(spendingY),
   };
   assertPointOnCurve(spendingKey, 'spending public key');
-  
+
+  if (schemeId === 0) {
+    if (viewingX && viewingY) {
+      const vx = BigInt(viewingX);
+      const vy = BigInt(viewingY);
+      if (vx !== spendingKey.x || vy !== spendingKey.y) {
+        throw new Error('Viewing key must match spending key for scheme_id 0');
+      }
+    }
+    return {
+      spendingKey,
+      viewingKey: spendingKey,
+      schemeId: 0,
+    };
+  }
+
+  if (!viewingX || !viewingY) {
+    throw new Error('Viewing key required for scheme_id 1');
+  }
+
+  const viewingKey: Point = {
+    x: BigInt(viewingX),
+    y: BigInt(viewingY),
+  };
+  assertPointOnCurve(viewingKey, 'viewing public key');
+
   return {
     spendingKey,
-    viewingKey: spendingKey,
-    schemeId: 0,
+    viewingKey,
+    schemeId: 1,
   };
 }

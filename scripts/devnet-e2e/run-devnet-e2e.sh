@@ -100,5 +100,6 @@ nvm_use_if_available() {
 
 nvm_use_if_available
 
+cd "$SCRIPT_DIR"
 npm install
 npm run e2e

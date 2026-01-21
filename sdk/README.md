@@ -47,6 +47,7 @@ pnpm add @starknet-stealth/sdk
 ```typescript
 import {
   generatePrivateKey,
+  normalizePrivateKey,
   getPublicKey,
   createMetaAddress,
   encodeMetaAddress,
@@ -54,9 +55,11 @@ import {
 
 // Generate key pair
 const spendingPrivKey = generatePrivateKey();
+// If importing an existing key, call normalizePrivateKey(existingKey).
 
-// Create meta-address (single-key scheme)
-const metaAddress = createMetaAddress(spendingPrivKey);
+// Create meta-address (dual-key scheme)
+const viewingPrivKey = generatePrivateKey();
+const metaAddress = createMetaAddress(spendingPrivKey, viewingPrivKey);
 
 // Encode for publishing to registry
 const encoded = encodeMetaAddress(metaAddress);
@@ -65,7 +68,10 @@ console.log('Spending Key X:', encoded.spendingX);
 // Publish to StealthRegistry contract
 await registry.register_stealth_meta_address(
   encoded.spendingX,
-  encoded.spendingY
+  encoded.spendingY,
+  encoded.viewingX,
+  encoded.viewingY,
+  encoded.schemeId
 );
 ```
 
@@ -82,8 +88,11 @@ const recipientMeta = await registry.get_stealth_meta_address(recipientAddress);
 
 // Decode meta-address
 const metaAddress = decodeMetaAddress(
-  recipientMeta.spending_x,
-  recipientMeta.spending_y
+  recipientMeta.spending_pubkey_x,
+  recipientMeta.spending_pubkey_y,
+  recipientMeta.viewing_pubkey_x,
+  recipientMeta.viewing_pubkey_y,
+  recipientMeta.scheme_id
 );
 
 // Generate stealth address
@@ -132,7 +141,7 @@ await scanner.initialize(REGISTRY_ABI, ACCOUNT_CLASS_HASH);
 // Scan from block 0
 const results = await scanner.scan(
   spendingPubkey,
-  spendingPrivKey, // viewingPrivKey (single-key scheme)
+  viewingPrivKey,
   spendingPrivKey,
   0 // fromBlock
 );
@@ -154,15 +163,31 @@ console.log(`Found ${stats.confirmedMatches} payments`);
 console.log(`Scan time: ${stats.scanTimeMs}ms`);
 ```
 
+### Optional: Withdrawal Privacy Helpers
+
+```typescript
+import { planWithdrawals } from '@starknet-stealth/sdk';
+
+const plan = planWithdrawals(10_000n, {
+  splits: 3,
+  minDelayMs: 60_000,
+  maxDelayMs: 300_000,
+});
+
+for (const step of plan) {
+  console.log(`Withdraw ${step.amount} after ${step.delayMs}ms`);
+}
+```
+
 ## Protocol Overview
 
-This SDK currently supports the **single-key** variant of DKSAP (viewing key = spending key). Dual-key meta-addresses are not yet supported on-chain.
+This SDK supports both **single-key** and **dual-key** variants of DKSAP (separate viewing and spending keys).
 
-1. **Recipient publishes meta-address**: `K = k*G`
+1. **Recipient publishes meta-address**: `K = k*G`, `V = v*G`
 2. **Sender generates ephemeral key**: `r, R = r*G`
-3. **Sender computes shared secret**: `S = r*K`
+3. **Sender computes shared secret**: `S = r*V`
 4. **Sender derives stealth pubkey**: `P = K + hash(S)*G`
-5. **Recipient scans using**: `S' = k*R`
+5. **Recipient scans using**: `S' = v*R`
 6. **Recipient derives private key**: `p = k + hash(S) mod n`
 
 ## View Tags
@@ -179,9 +204,10 @@ View tags are the first byte of `hash(S)`, used for efficient scanning:
 
 ```typescript
 generatePrivateKey(): bigint
+normalizePrivateKey(privateKey: bigint): bigint
 getPublicKey(privateKey: bigint): Point
 generateEphemeralKeyPair(): EphemeralKeyPair
-createMetaAddress(spendingPrivKey: bigint): StealthMetaAddress
+createMetaAddress(spendingPrivKey: bigint, viewingPrivKey?: bigint): StealthMetaAddress
 ```
 
 ### Stealth Address Generation
@@ -237,6 +263,15 @@ class StealthScanner {
   ): Promise<ScanResult[]>
   getStats(): ScanStats
 }
+```
+
+### Withdrawal Planning
+
+```typescript
+planWithdrawals(
+  totalAmount: bigint,
+  options?: WithdrawalPlanOptions
+): WithdrawalStep[]
 ```
 
 ## Security Considerations
