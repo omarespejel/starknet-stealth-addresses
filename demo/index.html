@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Starknet Stealth Addresses</title>
+  <script src="https://cdn.jsdelivr.net/npm/get-starknet@3.0.1/dist/index.global.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #222;
+    }
+    
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    
+    .subtitle { color: #666; font-size: 0.85rem; }
+    
+    .network-badge {
+      display: inline-block;
+      background: #1a3a1a;
+      color: #4ade80;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .wallet-section {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .wallet-info { font-size: 0.8rem; }
+    .wallet-address { color: #4ade80; font-size: 0.75rem; margin-top: 0.25rem; }
+    
+    .connect-btn {
+      background: #4ade80;
+      color: #000;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .connect-btn:hover { background: #86efac; }
+    .connect-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    .link-button {
+      background: transparent;
+      border: none;
+      color: #4ade80;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 0;
+    }
+
+    .link-button:hover { text-decoration: underline; }
+
+    .debug-panel {
+      display: none;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.7rem;
+    }
+
+    .step {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .step.disabled { opacity: 0.5; pointer-events: none; }
+    
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .step-number {
+      background: #222;
+      color: #666;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+    
+    .step-number.active { background: #4ade80; color: #000; }
+    .step-title { font-size: 0.9rem; color: #fff; }
+    .step-desc { color: #666; font-size: 0.8rem; margin-bottom: 1rem; }
+    
+    button {
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 0.6rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    
+    button:hover { background: #252525; border-color: #444; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-primary {
+      background: #1a3a1a;
+      border-color: #2d5a2d;
+      color: #4ade80;
+    }
+    
+    .btn-primary:hover { background: #2d5a2d; }
+
+    input {
+      background: #0a0a0a;
+      border: 1px solid #222;
+      color: #fff;
+      padding: 0.6rem;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    
+    input:focus { outline: none; border-color: #444; }
+    
+    .input-group { margin-bottom: 1rem; }
+    .input-label { color: #666; font-size: 0.75rem; margin-bottom: 0.25rem; }
+
+    .output {
+      background: #050505;
+      border: 1px solid #1a1a1a;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.75rem;
+    }
+    
+    .output-row {
+      display: flex;
+      margin-bottom: 0.5rem;
+      align-items: flex-start;
+    }
+    
+    .output-label {
+      color: #666;
+      width: 120px;
+      flex-shrink: 0;
+    }
+    
+    .output-value {
+      color: #4ade80;
+      word-break: break-all;
+    }
+
+    .tx-link {
+      color: #60a5fa;
+      text-decoration: none;
+      font-size: 0.75rem;
+    }
+    
+    .tx-link:hover { text-decoration: underline; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    
+    .status.pending { background: #1a1a3a; color: #93c5fd; }
+    .status.success { background: #1a3a1a; color: #4ade80; }
+    .status.error { background: #3a1a1a; color: #f87171; }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { height: 1px; background: #222; margin: 1rem 0; }
+
+    .info-box {
+      background: #0f172a;
+      border: 1px solid #1e3a5f;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: #93c5fd;
+    }
+
+    .milestone {
+      background: #0b1a0b;
+      border: 1px solid #2d5a2d;
+      border-radius: 4px;
+      padding: 0.6rem 0.8rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.75rem;
+      color: #9ae6b4;
+    }
+
+    .next-steps {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+
+    .contracts-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #222;
+    }
+
+    .contract-item h4 {
+      font-size: 0.7rem;
+      color: #666;
+      font-weight: normal;
+      margin-bottom: 0.25rem;
+    }
+
+    .contract-item code {
+      font-size: 0.65rem;
+      color: #888;
+      word-break: break-all;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #222;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+
+    .tab:hover { color: #888; }
+    .tab.active { color: #fff; border-bottom-color: #4ade80; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .event-log {
+      background: #050505;
+      border: 1px solid #1a1a1a;
+      border-radius: 4px;
+      padding: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 0.7rem;
+    }
+
+    .event-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #111;
+    }
+
+    .event-item:last-child { border-bottom: none; }
+
+    .match-badge {
+      background: #4ade80;
+      color: #000;
+      padding: 0.1rem 0.4rem;
+      border-radius: 2px;
+      font-size: 0.65rem;
+      font-weight: bold;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #222;
+      color: #444;
+      font-size: 0.7rem;
+    }
+
+    .footer a { color: #666; text-decoration: none; }
+    .footer a:hover { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>STARKNET STEALTH ADDRESSES</h1>
+      <p class="subtitle">Privacy-preserving payments - Live Demo</p>
+      <p class="subtitle">Comments: Telegram @espejelomar, X @omarespejel, GitHub @omarespejel, omar@starknet.org</p>
+      <span class="network-badge">Sepolia Testnet</span>
+    </header>
+
+    <!-- Wallet Connection -->
+    <div class="wallet-section">
+      <div class="wallet-info">
+        <div id="wallet-status">Connect your wallet to interact with contracts</div>
+        <div id="wallet-address" class="wallet-address"></div>
+      </div>
+      <button id="connect-btn" class="connect-btn" onclick="connectWallet()">
+        Connect Wallet
+      </button>
+    </div>
+
+    <div style="margin-bottom: 0.5rem;">
+      <button id="debug-toggle" class="link-button" onclick="toggleDebugPanel()">Show Wallet Debug</button>
+    </div>
+
+    <!-- Debug Panel -->
+    <div id="debug-panel" class="debug-panel">
+      <div style="color: #888; margin-bottom: 0.5rem;">Wallet Detection Debug:</div>
+      <div id="debug-output" style="color: #4ade80; font-family: monospace;"></div>
+      <button onclick="detectWallets()" style="margin-top: 0.5rem; font-size: 0.7rem;">Re-detect Wallets</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="send" onclick="showTab('send')">Send (Bob)</div>
+      <div class="tab" data-tab="receive" onclick="showTab('receive')">Receive (Alice)</div>
+      <div class="tab" data-tab="scan" onclick="showTab('scan')">Scan</div>
+    </div>
+
+    <!-- SEND TAB (Bob's perspective) -->
+    <div id="send-tab" class="tab-content active">
+      <!-- Flow Overview -->
+      <div class="flow-overview" style="background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1)); border: 1px solid rgba(78, 205, 196, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 600; color: #4ecdc4; margin-bottom: 0.5rem;">Stealth Payment Flow (4 Steps)</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #ccc;">
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 1.2rem; margin-bottom: 0.25rem;">1</div>
+            <div>Lookup</div>
+            <div style="font-size: 0.65rem; color: #888;">Get recipient's key</div>
+          </div>
+          <div style="color: #4ecdc4;">&#8594;</div>
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 1.2rem; margin-bottom: 0.25rem;">2</div>
+            <div>Generate</div>
+            <div style="font-size: 0.65rem; color: #888;">Create stealth addr</div>
+          </div>
+          <div style="color: #4ecdc4;">&#8594;</div>
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 1.2rem; margin-bottom: 0.25rem;">3</div>
+            <div>Deploy</div>
+            <div style="font-size: 0.65rem; color: #888;">Create account</div>
+          </div>
+          <div style="color: #4ecdc4;">&#8594;</div>
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 1.2rem; margin-bottom: 0.25rem;">4</div>
+            <div style="color: #ff6b6b; font-weight: 600;">Fund</div>
+            <div style="font-size: 0.65rem; color: #888;">Send STRK</div>
+          </div>
+        </div>
+        <div style="margin-top: 0.75rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 0.75rem; color: #888;">
+          <strong style="color: #4ecdc4;">Privacy:</strong> You know who you're paying, but observers cannot link this payment to other payments the recipient receives.
+        </div>
+      </div>
+
+      <!-- Step 1: Get recipient meta-address -->
+      <div class="step" id="step-1">
+        <div class="step-header">
+          <span class="step-number">1</span>
+          <span class="step-title">Enter Recipient's Meta-Address</span>
+        </div>
+        <p class="step-desc">Get the recipient's public key from the registry or paste it directly.</p>
+        
+        <div class="input-group">
+          <div class="input-label">Recipient Starknet Address (to lookup)</div>
+          <input type="text" id="lookup-address" placeholder="0x...">
+        </div>
+        <button onclick="lookupMetaAddress()">Lookup from Registry</button>
+        
+        <div class="divider"></div>
+        
+        <div class="input-group">
+          <div class="input-label">Or paste Spending Key X directly</div>
+          <input type="text" id="recipient-key-x" placeholder="0x...">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Spending Key Y</div>
+          <input type="text" id="recipient-key-y" placeholder="0x...">
+        </div>
+        
+        <div id="lookup-output" class="output" style="display: none;"></div>
+      </div>
+
+      <!-- Step 2: Generate stealth address -->
+      <div class="step" id="step-2">
+        <div class="step-header">
+          <span class="step-number">2</span>
+          <span class="step-title">Generate Stealth Address</span>
+        </div>
+        <p class="step-desc">Compute a one-time stealth address using ECDH key exchange.</p>
+        
+        <button class="btn-primary" onclick="generateStealth()">Generate Stealth Address</button>
+        
+        <div id="stealth-output" class="output" style="display: none;"></div>
+      </div>
+
+      <!-- Step 3: Deploy & Announce -->
+      <div class="step" id="step-3">
+        <div class="step-header">
+          <span class="step-number">3</span>
+          <span class="step-title">Deploy Account & Announce</span>
+        </div>
+        <p class="step-desc">Deploy the stealth account on-chain and publish the announcement.</p>
+        
+        <button class="btn-primary" onclick="deployAndAnnounce()" id="deploy-btn" disabled>
+          Deploy & Announce
+        </button>
+        
+        <div id="deploy-output" class="output" style="display: none;"></div>
+      </div>
+
+      <!-- Step 4: Fund the Stealth Address -->
+      <div class="step" id="step-4" style="display: none;">
+        <div class="step-header">
+          <span class="step-number">4</span>
+          <span class="step-title">Fund the Stealth Address</span>
+        </div>
+        <p class="step-desc">Send STRK to the stealth address so the recipient can use it.</p>
+        
+        <div class="input-group">
+          <div class="input-label">Stealth Address (copy this)</div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" id="fund-stealth-address" readonly style="flex: 1; font-family: monospace; font-size: 0.85rem;">
+            <button onclick="copyFundAddress()" style="padding: 0.5rem 1rem;">Copy</button>
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <div class="input-label">Amount (STRK)</div>
+          <input type="text" id="fund-amount" placeholder="0.1" value="0.1">
+        </div>
+        
+        <button class="btn-primary" onclick="fundStealthAddress()" id="fund-btn">
+          Send STRK to Stealth Address
+        </button>
+        
+        <div id="fund-output" class="output" style="display: none;"></div>
+        
+        <div class="info-box" style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid #4ecdc4;">
+          <strong>Complete Flow:</strong>
+          <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+            <li>You (Bob) generated a stealth address for the recipient</li>
+            <li>You deployed the stealth account on-chain</li>
+            <li>You announced the payment (so recipient can find it)</li>
+            <li><strong>Now: Send STRK to fund the stealth account</strong></li>
+            <li>Recipient scans, finds the payment, and can spend the STRK</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIVE TAB (Alice's perspective) -->
+    <div id="receive-tab" class="tab-content">
+      <!-- Flow Overview -->
+      <div class="flow-overview" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(78, 205, 196, 0.1)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Recipient Setup (One-Time)</div>
+        <div style="font-size: 0.85rem; color: #ccc;">
+          Register your meta-address so senders can create private payments to you.
+          <br>
+          <span style="color: #888; font-size: 0.75rem;">Share your Starknet address with senders - they look up your meta-address from the registry.</span>
+        </div>
+        <div style="margin-top: 0.75rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 0.75rem; color: #888;">
+          <strong style="color: #a855f7;">Privacy note:</strong> The sender knows they're paying you, but blockchain observers cannot link multiple payments to you - each goes to a unique stealth address.
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">1</span>
+          <span class="step-title">Generate Your Meta-Address</span>
+        </div>
+        <p class="step-desc">Generate a new key pair. Save the private key securely - you'll need it to claim payments.</p>
+        
+        <button onclick="generateRecipientKeys()">Generate New Keys</button>
+        
+        <div id="recipient-keys-output" class="output" style="display: none;"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">2</span>
+          <span class="step-title">Register Meta-Address On-Chain</span>
+        </div>
+        <p class="step-desc">Publish your meta-address to the registry so senders can find you.</p>
+        
+        <div class="input-group">
+          <div class="input-label">Your Spending Key X</div>
+          <input type="text" id="register-key-x" placeholder="0x...">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Your Spending Key Y</div>
+          <input type="text" id="register-key-y" placeholder="0x...">
+        </div>
+        
+        <button class="btn-primary" onclick="registerMetaAddress()" id="register-btn">
+          Register On-Chain
+        </button>
+        <button onclick="updateMetaAddress()" id="update-btn" style="margin-left: 0.5rem;">
+          Update On-Chain
+        </button>
+        
+        <div id="register-output" class="output" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- SCAN TAB -->
+    <div id="scan-tab" class="tab-content">
+      <!-- Flow Overview -->
+      <div class="flow-overview" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(78, 205, 196, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 600; color: #facc15; margin-bottom: 0.5rem;">Scan & Claim Payments</div>
+        <div style="font-size: 0.85rem; color: #ccc;">
+          Use your private key to find stealth payments sent to you.
+          <br>
+          <span style="color: #888; font-size: 0.75rem;">The scanner checks announcements and computes which addresses you control.</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">1</span>
+          <span class="step-title">Enter Your Private Key</span>
+        </div>
+        <p class="step-desc">Your spending private key is used to check which announcements are yours.</p>
+        
+        <div class="input-group">
+          <div class="input-label">Your Spending Private Key</div>
+          <input type="password" id="scan-private-key" placeholder="0x...">
+        </div>
+        
+        <button class="btn-primary" onclick="scanAnnouncements()">Scan Announcements</button>
+        
+        <div id="scan-status" class="status" style="display: none;"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">2</span>
+          <span class="step-title">Results</span>
+        </div>
+        
+        <div id="scan-results" class="event-log">
+          <div style="color: #666;">No scan performed yet. Enter your private key and click Scan.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">3</span>
+          <span class="step-title">Claim / Spend</span>
+        </div>
+        <p class="step-desc">Use the recovered stealth private key to send funds from the stealth account.</p>
+
+        <div class="input-group">
+          <div class="input-label">Stealth Address</div>
+          <input type="text" id="claim-stealth-address" placeholder="0x...">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Stealth Private Key</div>
+          <input type="password" id="claim-stealth-key" placeholder="0x...">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Recipient Address</div>
+          <input type="text" id="claim-recipient" placeholder="0x...">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Amount (STRK)</div>
+          <input type="text" id="claim-amount" placeholder="0.1">
+          <button onclick="setMaxStrkAmount()" style="margin-top: 0.4rem;" type="button">Max</button>
+        </div>
+
+        <button class="btn-primary" onclick="sendStealthTransfer()" type="button">Send From Stealth Account</button>
+        <div id="claim-output" class="output" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Contract Info -->
+    <div class="contracts-info">
+      <div class="contract-item">
+        <h4>StealthRegistry</h4>
+        <code>0x0638f004...991c</code>
+        <br>
+        <a href="https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c" target="_blank" class="tx-link">View on Explorer</a>
+      </div>
+      <div class="contract-item">
+        <h4>StealthAccountFactory</h4>
+        <code>0x06a715a0...a7cb</code>
+        <br>
+        <a href="https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb" target="_blank" class="tx-link">View on Explorer</a>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/omarespejel/starknet-stealth-addresses" target="_blank">Source Code</a>
+        &nbsp;|&nbsp;
+        <a href="https://community.starknet.io" target="_blank">SNIP Discussion</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Configuration - Updated 2026-01-20 with fixed compute_stealth_address
+    const CONFIG = {
+      registryAddress: '0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c',
+      factoryAddress: '0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb',
+      accountClassHash: '0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd',
+      rpcUrl: 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/cf52O0RwFy1mEB0uoYsel',
+      ethTokenAddress: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
+      strkTokenAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+    };
+
+    // ABIs
+    const REGISTRY_ABI = [
+      { type: "function", name: "register_stealth_meta_address", inputs: [{ name: "spending_key_x", type: "felt" }, { name: "spending_key_y", type: "felt" }], outputs: [] },
+      { type: "function", name: "get_stealth_meta_address", inputs: [{ name: "user", type: "felt" }], outputs: [{ name: "x", type: "felt" }, { name: "y", type: "felt" }] },
+      { type: "function", name: "has_meta_address", inputs: [{ name: "user", type: "felt" }], outputs: [{ name: "result", type: "felt" }] },
+      { type: "function", name: "announce", inputs: [{ name: "scheme_id", type: "felt" }, { name: "ephemeral_pubkey_x", type: "felt" }, { name: "ephemeral_pubkey_y", type: "felt" }, { name: "stealth_address", type: "felt" }, { name: "view_tag", type: "felt" }, { name: "metadata", type: "felt" }], outputs: [] },
+    ];
+
+    const FACTORY_ABI = [
+      { type: "function", name: "deploy_stealth_account", inputs: [{ name: "stealth_pubkey_x", type: "felt" }, { name: "stealth_pubkey_y", type: "felt" }, { name: "salt", type: "felt" }], outputs: [{ name: "address", type: "felt" }] },
+    ];
+
+    // State
+    let wallet = null;
+    let account = null;
+    let provider = null;
+    let stealthData = null;
+    let lastMatches = [];
+    let lastDeployTxHash = null;
+    let lastAnnounceTxHash = null;
+    let lastAnnounceCall = null;
+    
+    function getProvider() {
+      if (account && account.provider) return account.provider;
+      if (wallet && wallet.provider) return wallet.provider;
+      return null;
+    }
+
+    function makeCall(contractAddress, entrypoint, calldata) {
+      return { contractAddress, entrypoint, calldata };
+    }
+
+    // Selector cache for common entrypoints (computed via starknet.js hash.getSelectorFromName)
+    const SELECTORS = {
+      'get_stealth_meta_address': '0x1fe2dab6f98370e5953e5bc38fdf82792736325aa05710e4ce3572f2b51371f',
+      'has_meta_address': '0x260da1763cad66562bd3525d8fb1e1d1f9f64ae12e60724cbd4515e981c934e',
+      'compute_stealth_address': '0x10f1e271ffd103e9df69a616e029c762686cbda63799630a28b25b5fa5c46c7',
+      'balanceOf': '0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e',
+    };
+    
+    async function callContract(contractAddress, entrypoint, calldata) {
+      // Use direct RPC for reliability (wallet provider can have network issues)
+      const selector = SELECTORS[entrypoint];
+      if (!selector) {
+        throw new Error(`Unknown entrypoint: ${entrypoint}. Add selector to SELECTORS map.`);
+      }
+      const result = await rpcRequest('starknet_call', {
+        request: {
+          contract_address: contractAddress,
+          entry_point_selector: selector,
+          calldata: calldata
+        },
+        block_id: 'latest'
+      });
+      if (!Array.isArray(result) || result.length === 0) {
+        throw new Error('Invalid call result');
+      }
+      return result;
+    }
+
+    let starknetJsPromise = null;
+    async function getStarknetModule() {
+      if (window.starknetjs && window.starknetjs.RpcProvider && window.starknetjs.Account) {
+        return window.starknetjs;
+      }
+
+      if (!starknetJsPromise) {
+        starknetJsPromise = new Promise((resolve, reject) => {
+          try {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'about:blank';
+            iframe.onload = () => {
+              try {
+                const doc = iframe.contentDocument;
+                if (!doc) {
+                  reject(new Error('starknet.js iframe document not accessible'));
+                  return;
+                }
+                const script = doc.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/starknet@6.21.0/dist/index.global.js';
+                script.async = true;
+                script.onload = () => {
+                  const lib = iframe.contentWindow ? iframe.contentWindow.starknet : null;
+                  const isLib = lib && lib.RpcProvider && lib.Account;
+                  if (!isLib) {
+                    console.error('[starknetjs] Global load failed in iframe');
+                    reject(new Error('starknet.js module missing constructors'));
+                    return;
+                  }
+                  window.starknetjs = lib;
+                  console.log('[starknetjs] Loaded in iframe');
+                  resolve(window.starknetjs);
+                };
+                script.onerror = () => reject(new Error('Failed to load starknet.js'));
+                doc.head.appendChild(script);
+              } catch (err) {
+                reject(err);
+              }
+            };
+            document.body.appendChild(iframe);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }
+
+      return starknetJsPromise;
+    }
+
+    function toUint256(amount) {
+      const lowMask = (1n << 128n) - 1n;
+      return {
+        low: (amount & lowMask),
+        high: (amount >> 128n)
+      };
+    }
+
+    function parseAmountToUint256(amountStr) {
+      const trimmed = (amountStr || '').trim();
+      if (!trimmed) throw new Error('Amount is required');
+      const parts = trimmed.split('.');
+      if (parts.length > 2) throw new Error('Invalid amount');
+      const whole = parts[0] ? BigInt(parts[0]) : 0n;
+      const fraction = parts[1] || '';
+      if (fraction.length > 18) throw new Error('Too many decimals (max 18)');
+      const fracPadded = (fraction + '0'.repeat(18)).slice(0, 18);
+      const frac = fracPadded ? BigInt(fracPadded) : 0n;
+      const amount = whole * (10n ** 18n) + frac;
+      return toUint256(amount);
+    }
+
+    function uint256ToBigInt(lowHex, highHex) {
+      const low = BigInt(lowHex);
+      const high = BigInt(highHex);
+      return (high << 128n) + low;
+    }
+
+    function formatUnits(amount, decimals = 18) {
+      const base = 10n ** BigInt(decimals);
+      const whole = amount / base;
+      const frac = amount % base;
+      let fracStr = frac.toString().padStart(decimals, '0').replace(/0+$/, '');
+      return fracStr ? `${whole}.${fracStr}` : `${whole}`;
+    }
+
+    function setClaimInputs(match) {
+      const addrInput = document.getElementById('claim-stealth-address');
+      const keyInput = document.getElementById('claim-stealth-key');
+      const recipientInput = document.getElementById('claim-recipient');
+      if (addrInput && match && match.stealthAddress) {
+        addrInput.value = match.stealthAddress;
+      }
+      if (keyInput && match && match.stealthPriv) {
+        keyInput.value = toHex(match.stealthPriv);
+      }
+      if (recipientInput && account && account.address) {
+        recipientInput.value = account.address;
+      }
+    }
+
+    async function hasMetaAddress(address) {
+      const result = await callContract(CONFIG.registryAddress, 'has_meta_address', [address]);
+      return BigInt(result[0]) !== 0n;
+    }
+
+    async function computeStealthContractAddress() {
+      if (!stealthData) {
+        throw new Error('Stealth data not available');
+      }
+      const values = await callContract(CONFIG.factoryAddress, 'compute_stealth_address', [
+        toHex(stealthData.stealthPub.x),
+        toHex(stealthData.stealthPub.y),
+        toHex(stealthData.salt)
+      ]);
+      const addr = normalizeAddress(values[0]);
+      stealthData.stealthAddress = addr;
+      return addr;
+    }
+
+    async function rpcRequest(method, params) {
+      const payload = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method,
+        params
+      };
+      console.log('[rpc] Request:', method, JSON.stringify(params));
+      const res = await fetch(CONFIG.rpcUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const body = await res.json();
+      if (body.error) {
+        console.error('[rpc] Error:', body.error);
+        throw new Error(body.error.message || 'RPC error');
+      }
+      return body.result;
+    }
+
+    // Direct RPC call - use callContract instead for known entrypoints
+    async function rpcCall(contractAddress, entrypoint, calldata) {
+      // If we have a known selector, use the proper format
+      if (SELECTORS[entrypoint]) {
+        return await callContract(contractAddress, entrypoint, calldata);
+      }
+      // Fallback for unknown entrypoints - compute selector
+      throw new Error(`Unknown entrypoint: ${entrypoint}. Add to SELECTORS map.`);
+    }
+
+    async function isContractDeployed(address) {
+      try {
+        // Use positional params: [block_id, contract_address]
+        await rpcRequest('starknet_getClassHashAt', ['latest', normalizeAddress(address)]);
+        return true;
+      } catch (err) {
+        // Contract not found means not deployed
+        if (err.message && (err.message.includes('Contract not found') || err.message.includes('not found'))) {
+          return false;
+        }
+        // For other errors, assume not deployed to be safe
+        console.warn('[isContractDeployed] Error checking deployment:', err.message);
+        return false;
+      }
+    }
+
+    async function getEventsPage(filter, token) {
+      const f = { ...filter };
+      if (token) f.continuation_token = token;
+      return rpcRequest('starknet_getEvents', [f]);
+    }
+
+    async function getScanRange() {
+      let latest = null;
+      try {
+        latest = await rpcRequest('starknet_blockNumber', []);
+      } catch (err) {
+        console.warn('[scan] blockNumber failed:', err.message);
+      }
+
+      let fromBlock = latest !== null ? Math.max(0, latest - 20000) : 0;
+      let toBlock = 'latest';
+      let source = 'recent';
+
+      if (lastAnnounceTxHash) {
+        try {
+          const receipt = await rpcRequest('starknet_getTransactionReceipt', [lastAnnounceTxHash]);
+          if (receipt && receipt.block_number !== undefined && receipt.block_number !== null) {
+            const b = Number(receipt.block_number);
+            fromBlock = Math.max(0, b - 20);
+            toBlock = { block_number: b };
+            source = 'announce_tx';
+          }
+        } catch (err) {
+          console.warn('[scan] receipt lookup failed:', err.message);
+        }
+      }
+
+      return { fromBlock, toBlock, latest, source };
+    }
+
+    async function fetchAnnouncementEvents() {
+      const events = [];
+      let token = null;
+      let pages = 0;
+      const maxPages = 20;
+
+      const range = await getScanRange();
+      console.log('[scan] Using block range:', range);
+
+      const baseFilter = {
+        from_block: { block_number: range.fromBlock },
+        to_block: range.toBlock,
+        address: CONFIG.registryAddress,
+        chunk_size: 100
+      };
+
+      let filter = { ...baseFilter, keys: [] };
+      let lastError = null;
+
+      while (pages < maxPages) {
+        console.log('[scan] Fetching events page', pages + 1, 'token', token || 'none');
+        let result = null;
+        try {
+          result = await getEventsPage(filter, token);
+        } catch (err) {
+          lastError = err;
+          // Retry with alternate filters in case RPC is strict
+          console.warn('[scan] getEvents failed, retrying with alternate filter:', err.message);
+          try {
+            result = await getEventsPage(baseFilter, token);
+          } catch (err2) {
+            lastError = err2;
+            console.warn('[scan] getEvents failed without keys, retrying with keys:[[]]:', err2.message);
+            result = await getEventsPage({ ...baseFilter, keys: [[]] }, token);
+          }
+        }
+
+        if (result && result.events && result.events.length) {
+          events.push(...result.events);
+        }
+        token = result ? result.continuation_token : null;
+        pages += 1;
+        if (!token) break;
+      }
+
+      if (!events.length && lastError) {
+        throw lastError;
+      }
+      return events;
+    }
+
+    async function waitForTx(txHash) {
+      const p = getProvider();
+      if (p && typeof p.waitForTransaction === 'function') {
+        return p.waitForTransaction(txHash);
+      }
+      // Fallback: wait a short time and let the user check the explorer
+      console.warn('[tx] waitForTransaction not available, skipping wait');
+      await new Promise((r) => setTimeout(r, 6000));
+    }
+
+    async function waitForTxOn(providerInstance, txHash) {
+      if (providerInstance && typeof providerInstance.waitForTransaction === 'function') {
+        return providerInstance.waitForTransaction(txHash);
+      }
+      return waitForTx(txHash);
+    }
+
+    async function executeWithTimeout(promise, timeoutMs) {
+      let timeoutId;
+      const timeout = new Promise((resolve) => {
+        timeoutId = setTimeout(() => resolve({ timedOut: true, tx: null }), timeoutMs);
+      });
+      const result = await Promise.race([
+        promise.then((tx) => ({ timedOut: false, tx })),
+        timeout
+      ]);
+      clearTimeout(timeoutId);
+      return result;
+    }
+
+    function renderDeploymentSuccess(deployTxHash, announceTxHash) {
+      const output = document.getElementById('deploy-output');
+      const deployLink = deployTxHash
+        ? `<a href="https://sepolia.starkscan.co/tx/${deployTxHash}" target="_blank" class="tx-link">${truncate(deployTxHash)}</a>`
+        : 'n/a';
+      const announceLink = announceTxHash
+        ? `<a href="https://sepolia.starkscan.co/tx/${announceTxHash}" target="_blank" class="tx-link">${truncate(announceTxHash)}</a>`
+        : 'n/a';
+      const stealthAddr = (stealthData && stealthData.stealthAddress) ? stealthData.stealthAddress : null;
+
+      output.innerHTML = `
+        <div class="milestone">Milestone reached: stealth account deployed and announced.</div>
+        <div class="status success">Step 3 complete!</div>
+        <div class="divider"></div>
+        <div class="output-row">
+          <span class="output-label">Deploy TX:</span>
+          ${deployLink}
+        </div>
+        <div class="output-row">
+          <span class="output-label">Announce TX:</span>
+          ${announceLink}
+        </div>
+        <div class="output-row">
+          <span class="output-label">Stealth Address:</span>
+          <span class="output-value">${stealthAddr ? truncate(stealthAddr) : 'n/a'}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-box" style="background: #1a2a1a; border-color: #1e5f1e; color: #a5fca5;">
+          <strong>Next: Fund the stealth address!</strong>
+          <br><br>
+          The account is deployed but has no balance. Send STRK to complete the payment.
+          <br><br>
+          <strong>View Tag:</strong> ${stealthData ? stealthData.viewTag : ''}
+        </div>
+      `;
+
+      // Show step 4 and populate the stealth address
+      const step4 = document.getElementById('step-4');
+      if (step4 && stealthAddr) {
+        step4.style.display = 'block';
+        document.getElementById('fund-stealth-address').value = stealthAddr;
+      }
+
+      const btn = document.getElementById('deploy-btn');
+      btn.textContent = 'Done';
+      btn.disabled = true;
+    }
+
+    async function finalizeAnnouncement() {
+      const input = document.getElementById('announce-tx-hash');
+      const hash = input ? input.value.trim() : '';
+      const txHash = hash || lastAnnounceTxHash;
+      if (!txHash) {
+        alert('Please paste the announcement transaction hash from your wallet activity.');
+        return;
+      }
+      const output = document.getElementById('deploy-output');
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Waiting for announcement confirmation...</div>';
+      await waitForTx(txHash);
+      renderDeploymentSuccess(lastDeployTxHash, txHash);
+    }
+
+    async function retryAnnouncement() {
+      if (!account || !lastAnnounceCall) {
+        alert('Nothing to retry yet.');
+        return;
+      }
+      const output = document.getElementById('deploy-output');
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Submitting announcement...</div>';
+      try {
+        const announceTx = await account.execute([lastAnnounceCall]);
+        lastAnnounceTxHash = announceTx.transaction_hash;
+        await waitForTx(lastAnnounceTxHash);
+        renderDeploymentSuccess(lastDeployTxHash, lastAnnounceTxHash);
+      } catch (err) {
+        console.error('Retry announce error:', err);
+        output.innerHTML = `<div class="status error">Announcement failed: ${err.message}</div>`;
+      }
+    }
+
+    // Copy stealth address for funding
+    function copyFundAddress() {
+      const addr = document.getElementById('fund-stealth-address').value;
+      navigator.clipboard.writeText(addr).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+
+    // Fund the stealth address with STRK
+    async function fundStealthAddress() {
+      if (!account) {
+        alert('Please connect your wallet first');
+        return;
+      }
+
+      const stealthAddr = document.getElementById('fund-stealth-address').value.trim();
+      const amountStr = document.getElementById('fund-amount').value.trim();
+      const output = document.getElementById('fund-output');
+      const btn = document.getElementById('fund-btn');
+
+      if (!stealthAddr || !amountStr) {
+        alert('Please enter the stealth address and amount');
+        return;
+      }
+
+      output.style.display = 'block';
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Sending STRK to stealth address...</div>';
+      btn.disabled = true;
+
+      try {
+        const amount = parseAmountToUint256(amountStr);
+        
+        // Transfer STRK to the stealth address
+        const transferCall = {
+          contractAddress: CONFIG.strkTokenAddress,
+          entrypoint: 'transfer',
+          calldata: [
+            normalizeAddress(stealthAddr),
+            toHex(amount.low),
+            toHex(amount.high)
+          ]
+        };
+
+        const tx = await account.execute([transferCall]);
+        output.innerHTML = `
+          <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
+          <div class="output-row" style="margin-top: 0.5rem;">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+        `;
+
+        await waitForTx(tx.transaction_hash);
+
+        output.innerHTML = `
+          <div class="milestone">Milestone reached: stealth payment funded!</div>
+          <div class="status success">STRK sent to stealth address!</div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+          <div class="output-row">
+            <span class="output-label">Amount:</span>
+            <span class="output-value">${amountStr} STRK</span>
+          </div>
+          <div class="output-row">
+            <span class="output-label">To:</span>
+            <span class="output-value">${truncate(stealthAddr)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="info-box" style="background: #1a2a1a; border-color: #1e5f1e; color: #a5fca5;">
+            <strong>Payment complete!</strong>
+            <br><br>
+            The recipient can now:
+            <ol style="margin: 0.5rem 0 0 1rem; padding: 0;">
+              <li>Go to the <strong>Scan</strong> tab</li>
+              <li>Enter their private key</li>
+              <li>Find this payment</li>
+              <li>Spend the ${amountStr} STRK</li>
+            </ol>
+          </div>
+          <div class="next-steps">
+            <div style="margin-top: 0.6rem;">
+              <button class="btn-primary" onclick="selectTab('scan')">Go to Scan (as recipient)</button>
+            </div>
+          </div>
+        `;
+
+        btn.textContent = 'Funded!';
+      } catch (err) {
+        console.error('Fund error:', err);
+        output.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Send STRK to Stealth Address';
+      }
+    }
+
+    // Crypto constants
+    const CURVE_ORDER = BigInt('0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f');
+    const FIELD_PRIME = BigInt('0x800000000000011000000000000000000000000000000000000000000000001');
+    const G = {
+      x: BigInt('0x1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca'),
+      y: BigInt('0x5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1f')
+    };
+    const ALPHA = 1n;
+
+    // Tab switching
+    function selectTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      const tabEl = document.querySelector(`.tab[data-tab="${tab}"]`);
+      if (tabEl) tabEl.classList.add('active');
+      const content = document.getElementById(`${tab}-tab`);
+      if (content) content.classList.add('active');
+    }
+
+    function showTab(tab) {
+      selectTab(tab);
+    }
+
+    // Math helpers
+    function mod(n, m) { return ((n % m) + m) % m; }
+    
+    function modInverse(a, m) {
+      let [old_r, r] = [a, m];
+      let [old_s, s] = [1n, 0n];
+      while (r !== 0n) {
+        const q = old_r / r;
+        [old_r, r] = [r, old_r - q * r];
+        [old_s, s] = [s, old_s - q * s];
+      }
+      return mod(old_s, m);
+    }
+
+    function pointAdd(p1, p2) {
+      if (p1 === null) return p2;
+      if (p2 === null) return p1;
+      if (p1.x === p2.x && p1.y === p2.y) {
+        const num = mod(3n * p1.x * p1.x + ALPHA, FIELD_PRIME);
+        const den = mod(2n * p1.y, FIELD_PRIME);
+        const lam = mod(num * modInverse(den, FIELD_PRIME), FIELD_PRIME);
+        const x3 = mod(lam * lam - 2n * p1.x, FIELD_PRIME);
+        const y3 = mod(lam * (p1.x - x3) - p1.y, FIELD_PRIME);
+        return { x: x3, y: y3 };
+      } else {
+        const num = mod(p2.y - p1.y, FIELD_PRIME);
+        const den = mod(p2.x - p1.x, FIELD_PRIME);
+        const lam = mod(num * modInverse(den, FIELD_PRIME), FIELD_PRIME);
+        const x3 = mod(lam * lam - p1.x - p2.x, FIELD_PRIME);
+        const y3 = mod(lam * (p1.x - x3) - p1.y, FIELD_PRIME);
+        return { x: x3, y: y3 };
+      }
+    }
+
+    function pointMul(k, p) {
+      let result = null;
+      let addend = p;
+      let scalar = k;
+      while (scalar > 0n) {
+        if (scalar & 1n) result = pointAdd(result, addend);
+        addend = pointAdd(addend, addend);
+        scalar >>= 1n;
+      }
+      return result;
+    }
+
+    function simpleHash(x, y) {
+      let h = mod(x * BigInt('0x123456789abcdef') + y, FIELD_PRIME);
+      h = mod(h * h + x, FIELD_PRIME);
+      h = mod(h * h + y, FIELD_PRIME);
+      return h;
+    }
+
+    function generatePrivateKey() {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      let key = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+      return mod(key, CURVE_ORDER - 1n) + 1n;
+    }
+
+    function getPublicKey(privateKey) {
+      return pointMul(privateKey, G);
+    }
+
+    function toHex(n) {
+      if (n === null || n === undefined) return '0x0';
+      return '0x' + n.toString(16);
+    }
+
+    function fromHex(hex) {
+      if (!hex || hex === '') return null;
+      if (hex.startsWith('0x')) hex = hex.slice(2);
+      return BigInt('0x' + hex);
+    }
+
+    function normalizeAddress(value) {
+      if (!value) return '0x0';
+      let v = value.trim();
+      if (v.startsWith('0x') || v.startsWith('0X')) {
+        v = v.slice(2);
+      }
+      if (v === '') return '0x0';
+      // If not hex, try parsing as BigInt (decimal)
+      if (!/^[0-9a-fA-F]+$/.test(v)) {
+        try {
+          return toHex(BigInt(value));
+        } catch (e) {
+          return value;
+        }
+      }
+      // Strip leading zeros
+      v = v.replace(/^0+/, '');
+      if (v === '') v = '0';
+      return '0x' + v.toLowerCase();
+    }
+
+    function truncate(hex, len = 12) {
+      if (!hex) return '';
+      if (hex.length <= len + 6) return hex;
+      return hex.slice(0, len) + '...' + hex.slice(-4);
+    }
+
+    // Wallet connection - try get-starknet first, fall back to direct connection
+    async function connectWallet() {
+      const btn = document.getElementById('connect-btn');
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+
+      try {
+        console.log('[wallet] Starting wallet connection...');
+        
+        let selectedWallet = null;
+        let walletName = 'Wallet';
+        
+        // Method 1: Try get-starknet library if available
+        if (typeof getStarknet !== 'undefined' && getStarknet.connect) {
+          console.log('[wallet] Using get-starknet library...');
+          try {
+            selectedWallet = await getStarknet.connect({
+              modalMode: 'alwaysAsk',
+              modalTheme: 'dark'
+            });
+            if (selectedWallet) {
+              walletName = selectedWallet.name || 'Wallet';
+              console.log('[wallet] get-starknet connected:', walletName);
+            }
+          } catch (gsErr) {
+            console.log('[wallet] get-starknet failed, trying direct connection:', gsErr.message);
+          }
+        }
+        
+        // Method 2: Fall back to direct wallet connection
+        if (!selectedWallet) {
+          console.log('[wallet] Trying direct wallet connection...');
+          
+          // Try Braavos first
+          if (window.starknet_braavos) {
+            console.log('[wallet] Found Braavos, connecting...');
+            try {
+              await window.starknet_braavos.enable();
+              selectedWallet = window.starknet_braavos;
+              walletName = 'Braavos';
+              console.log('[wallet] Braavos connected');
+            } catch (e) {
+              console.log('[wallet] Braavos enable failed:', e.message);
+            }
+          }
+          
+          // Try ArgentX if Braavos didn't work
+          if (!selectedWallet && window.starknet_argentX) {
+            console.log('[wallet] Found ArgentX, connecting...');
+            try {
+              await window.starknet_argentX.enable();
+              selectedWallet = window.starknet_argentX;
+              walletName = 'ArgentX';
+              console.log('[wallet] ArgentX connected');
+            } catch (e) {
+              console.log('[wallet] ArgentX enable failed:', e.message);
+            }
+          }
+          
+          // Try generic starknet object (if it's actually a wallet)
+          if (!selectedWallet && window.starknet && window.starknet.enable) {
+            console.log('[wallet] Found generic starknet wallet, connecting...');
+            try {
+              await window.starknet.enable();
+              selectedWallet = window.starknet;
+              walletName = window.starknet.name || 'Wallet';
+              console.log('[wallet] Generic wallet connected');
+            } catch (e) {
+              console.log('[wallet] Generic wallet enable failed:', e.message);
+            }
+          }
+        }
+        
+        // Check if we got a wallet
+        if (!selectedWallet) {
+          throw new Error('No wallet found. Please install ArgentX or Braavos extension.');
+        }
+        
+        // User cancelled
+        if (selectedWallet === null) {
+          console.log('[wallet] User cancelled wallet selection');
+          btn.disabled = false;
+          btn.textContent = 'Connect Wallet';
+          return;
+        }
+        
+        console.log('[wallet] Wallet state:', {
+          name: walletName,
+          isConnected: selectedWallet.isConnected,
+          hasAccount: !!selectedWallet.account,
+          selectedAddress: selectedWallet.selectedAddress
+        });
+        
+        // Enable if not already connected
+        if (!selectedWallet.isConnected && selectedWallet.enable) {
+          console.log('[wallet] Enabling wallet...');
+          await selectedWallet.enable();
+        }
+        
+        // Get account
+        let walletAccount = selectedWallet.account;
+        
+        if (!walletAccount) {
+          throw new Error('No account available. Please unlock your wallet and try again.');
+        }
+        
+        wallet = selectedWallet;
+        account = walletAccount;
+        
+        console.log('[wallet] Connected successfully!');
+        console.log('[wallet] Address:', account.address);
+        
+        setupContracts();
+        updateWalletUI(walletName);
+
+      } catch (err) {
+        console.error('[wallet] Connection error:', err);
+        console.error('[wallet] Error stack:', err.stack);
+        
+        // Provide helpful error message
+        let errorMsg = err.message;
+        if (err.message.includes('No wallet') || err.message.includes('not found')) {
+          errorMsg = 'No Starknet wallet found.\n\nPlease install and enable:\n- ArgentX: chrome.google.com/webstore/detail/argent-x\n- Braavos: chrome.google.com/webstore/detail/braavos\n\nThen refresh this page.';
+        } else if (err.message.includes('rejected') || err.message.includes('cancel')) {
+          errorMsg = 'Connection rejected. Please approve the connection in your wallet.';
+        }
+        
+        alert('Failed to connect: ' + errorMsg);
+        btn.disabled = false;
+        btn.textContent = 'Connect Wallet';
+      }
+    }
+
+    function setupContracts() {
+      // Prefer wallet/account provider
+      provider = getProvider();
+      if (!provider) {
+        throw new Error('Provider not available from wallet');
+      }
+    }
+
+    function updateWalletUI(walletName) {
+      const btn = document.getElementById('connect-btn');
+      const displayAddress = account.address;
+      document.getElementById('wallet-status').textContent = walletName + ' Connected';
+      document.getElementById('wallet-address').textContent = truncate(displayAddress, 16);
+      const lookupInput = document.getElementById('lookup-address');
+      if (lookupInput && !lookupInput.value) {
+        lookupInput.value = displayAddress;
+      }
+      btn.textContent = 'Connected';
+      btn.style.background = '#1a3a1a';
+      btn.style.color = '#4ade80';
+    }
+
+    // Lookup meta-address from registry
+    async function lookupMetaAddress() {
+      const addressInput = document.getElementById('lookup-address').value;
+      if (!addressInput) {
+        alert('Please enter an address to lookup');
+        return;
+      }
+      const address = normalizeAddress(addressInput);
+      document.getElementById('lookup-address').value = address;
+
+      const output = document.getElementById('lookup-output');
+      output.style.display = 'block';
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Looking up...</div>';
+
+      try {
+        // Use direct RPC call instead of wallet provider (more reliable)
+        const values = await callContract(CONFIG.registryAddress, 'get_stealth_meta_address', [address]);
+        console.log('[lookup] Raw result:', values);
+        
+        if (values.length >= 2 && values[0] !== '0x0') {
+          const [x, y] = values;
+          document.getElementById('recipient-key-x').value = toHex(BigInt(x));
+          document.getElementById('recipient-key-y').value = toHex(BigInt(y));
+          output.innerHTML = `
+            <div class="status success">Found meta-address</div>
+            <div class="output-row" style="margin-top: 0.5rem;">
+              <span class="output-label">Key X:</span>
+              <span class="output-value">${truncate(toHex(BigInt(x)))}</span>
+            </div>
+            <div class="output-row">
+              <span class="output-label">Key Y:</span>
+              <span class="output-value">${truncate(toHex(BigInt(y)))}</span>
+            </div>
+          `;
+        } else {
+          output.innerHTML = '<div class="status error">No meta-address registered for this user</div>';
+        }
+      } catch (err) {
+        console.error('Lookup error:', err);
+        output.innerHTML = `<div class="status error">Lookup failed: ${err.message}</div>`;
+      }
+    }
+
+    // Generate stealth address
+    function generateStealth() {
+      const keyX = document.getElementById('recipient-key-x').value;
+      const keyY = document.getElementById('recipient-key-y').value;
+
+      if (!keyX || !keyY) {
+        alert('Please enter recipient public key');
+        return;
+      }
+
+      const recipientPub = { x: fromHex(keyX), y: fromHex(keyY) };
+
+      // Generate ephemeral key
+      const ephemeralPriv = generatePrivateKey();
+      const ephemeralPub = getPublicKey(ephemeralPriv);
+
+      // Compute shared secret
+      const sharedSecret = pointMul(ephemeralPriv, recipientPub);
+
+      // Hash shared secret
+      const hashS = mod(simpleHash(sharedSecret.x, sharedSecret.y), CURVE_ORDER);
+
+      // Compute stealth public key
+      const hashPoint = pointMul(hashS, G);
+      const stealthPub = pointAdd(recipientPub, hashPoint);
+
+      // Compute view tag
+      const viewTag = Number(hashS % 256n);
+
+      // Generate salt
+      const salt = simpleHash(ephemeralPub.x, ephemeralPub.y);
+
+      // Store for deployment
+      stealthData = {
+        ephemeralPriv,
+        ephemeralPub,
+        stealthPub,
+        viewTag,
+        salt,
+        sharedSecret
+      };
+
+      const output = document.getElementById('stealth-output');
+      output.style.display = 'block';
+      output.innerHTML = `
+        <div class="milestone">Milestone reached: one-time stealth address computed.</div>
+        <div class="status success">Stealth address generated</div>
+        <div class="divider"></div>
+        <div class="output-row">
+          <span class="output-label">Ephemeral R.x:</span>
+          <span class="output-value">${truncate(toHex(ephemeralPub.x))}</span>
+        </div>
+        <div class="output-row">
+          <span class="output-label">Ephemeral R.y:</span>
+          <span class="output-value">${truncate(toHex(ephemeralPub.y))}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="output-row">
+          <span class="output-label">Stealth P.x:</span>
+          <span class="output-value">${truncate(toHex(stealthPub.x))}</span>
+        </div>
+        <div class="output-row">
+          <span class="output-label">Stealth P.y:</span>
+          <span class="output-value">${truncate(toHex(stealthPub.y))}</span>
+        </div>
+        <div class="output-row">
+          <span class="output-label">View Tag:</span>
+          <span class="output-value">${viewTag}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-box">
+          Ready to deploy. Click "Deploy & Announce" to create the stealth account on-chain.
+        </div>
+      `;
+
+      document.getElementById('deploy-btn').disabled = false;
+    }
+
+    // Deploy stealth account and announce
+    async function deployAndAnnounce() {
+      if (!account) {
+        alert('Please connect your wallet first');
+        return;
+      }
+
+      if (!stealthData) {
+        alert('Please generate a stealth address first');
+        return;
+      }
+
+      const btn = document.getElementById('deploy-btn');
+      btn.disabled = true;
+      btn.textContent = 'Deploying...';
+
+      const output = document.getElementById('deploy-output');
+      output.style.display = 'block';
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Deploying stealth account...</div>';
+
+      try {
+        // Deploy stealth account
+        const deployCall = makeCall(CONFIG.factoryAddress, 'deploy_stealth_account', [
+          toHex(stealthData.stealthPub.x),
+          toHex(stealthData.stealthPub.y),
+          toHex(stealthData.salt)
+        ]);
+
+        const deployTx = await account.execute([deployCall]);
+        lastDeployTxHash = deployTx.transaction_hash;
+        
+        output.innerHTML = `
+          <div class="status pending"><div class="spinner"></div>Waiting for deployment confirmation...</div>
+          <div class="output-row" style="margin-top: 0.5rem;">
+            <span class="output-label">Deploy TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${deployTx.transaction_hash}" target="_blank" class="tx-link">${truncate(deployTx.transaction_hash)}</a>
+          </div>
+        `;
+
+        await waitForTx(deployTx.transaction_hash);
+
+        let stealthAddress = null;
+        try {
+          stealthAddress = await computeStealthContractAddress();
+          console.log('[deploy] Computed stealth address:', stealthAddress);
+        } catch (err) {
+          console.error('[deploy] compute_stealth_address failed:', err);
+          output.innerHTML = `<div class="status error">Error computing stealth address: ${err.message}</div>`;
+          btn.disabled = false;
+          btn.textContent = 'Deploy & Announce';
+          return;
+        }
+
+        // Now announce
+        output.innerHTML += '<div class="status pending" id="announce-status" style="margin-top: 0.5rem;"><div class="spinner"></div>Publishing announcement... (check wallet approval)</div>';
+        const announceStatusEl = document.getElementById('announce-status');
+        const announceReminder = setTimeout(() => {
+          if (announceStatusEl) {
+            announceStatusEl.innerHTML = '<div class="spinner"></div>Waiting for wallet approval... If no popup, open your wallet extension and confirm.';
+          }
+        }, 8000);
+
+        const announceCall = makeCall(CONFIG.registryAddress, 'announce', [
+          '0x0', // scheme_id
+          toHex(stealthData.ephemeralPub.x),
+          toHex(stealthData.ephemeralPub.y),
+          stealthAddress,
+          toHex(BigInt(stealthData.viewTag)),
+          '0x0' // metadata
+        ]);
+        lastAnnounceCall = announceCall;
+
+        const { timedOut, tx } = await executeWithTimeout(account.execute([announceCall]), 20000);
+        clearTimeout(announceReminder);
+        if (timedOut || !tx) {
+          output.innerHTML = `
+            <div class="status pending">Announcement submitted. Waiting for wallet response...</div>
+            <div class="divider"></div>
+            <div class="info-box">
+              If you already approved the announcement in your wallet, paste the tx hash below and click Finalize.
+            </div>
+            <div class="input-group" style="margin-top: 0.75rem;">
+              <div class="input-label">Announcement TX Hash (from wallet activity)</div>
+              <input type="text" id="announce-tx-hash" placeholder="0x...">
+            </div>
+            <button onclick="finalizeAnnouncement()" class="btn-primary">Finalize</button>
+            <button onclick="retryAnnouncement()" style="margin-left: 0.5rem;">Retry Announce</button>
+          `;
+          btn.disabled = false;
+          btn.textContent = 'Deploy & Announce';
+          return;
+        }
+
+        lastAnnounceTxHash = tx.transaction_hash;
+        await waitForTx(lastAnnounceTxHash);
+        renderDeploymentSuccess(deployTx.transaction_hash, lastAnnounceTxHash);
+
+      } catch (err) {
+        console.error('Deploy error:', err);
+        output.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Deploy & Announce';
+      }
+    }
+
+    // Generate recipient keys
+    function generateRecipientKeys() {
+      const privateKey = generatePrivateKey();
+      const publicKey = getPublicKey(privateKey);
+
+      document.getElementById('register-key-x').value = toHex(publicKey.x);
+      document.getElementById('register-key-y').value = toHex(publicKey.y);
+
+      const output = document.getElementById('recipient-keys-output');
+      output.style.display = 'block';
+      output.innerHTML = `
+        <div class="status success">Keys generated</div>
+        <div class="divider"></div>
+        <div class="output-row">
+          <span class="output-label">Private Key:</span>
+          <span class="output-value" style="color: #f87171;">${truncate(toHex(privateKey))}</span>
+        </div>
+        <div class="output-row">
+          <span class="output-label">Public Key X:</span>
+          <span class="output-value">${truncate(toHex(publicKey.x))}</span>
+        </div>
+        <div class="output-row">
+          <span class="output-label">Public Key Y:</span>
+          <span class="output-value">${truncate(toHex(publicKey.y))}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-box" style="background: #2a1a1a; border-color: #5f1e1e; color: #fca5a5;">
+          SAVE YOUR PRIVATE KEY! You need it to claim payments. It will not be shown again.
+          <br><br>
+          <code style="font-size: 0.65rem; word-break: break-all;">${toHex(privateKey)}</code>
+        </div>
+      `;
+
+      // Store for scan tab
+      document.getElementById('scan-private-key').value = toHex(privateKey);
+    }
+
+    // Register meta-address
+    async function registerMetaAddress() {
+      if (!account) {
+        alert('Please connect your wallet first');
+        return;
+      }
+
+      const keyX = document.getElementById('register-key-x').value;
+      const keyY = document.getElementById('register-key-y').value;
+
+      if (!keyX || !keyY) {
+        alert('Please generate or enter your keys first');
+        return;
+      }
+
+      const registerBtn = document.getElementById('register-btn');
+      const updateBtn = document.getElementById('update-btn');
+      registerBtn.disabled = true;
+      updateBtn.disabled = true;
+      registerBtn.textContent = 'Registering...';
+
+      const output = document.getElementById('register-output');
+      output.style.display = 'block';
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Registering meta-address...</div>';
+
+      try {
+        const alreadyRegistered = await hasMetaAddress(account.address);
+        if (alreadyRegistered) {
+          output.innerHTML = '<div class="status pending"><div class="spinner"></div>Already registered. Updating meta-address...</div>';
+          registerBtn.textContent = 'Register On-Chain';
+          registerBtn.disabled = false;
+          updateBtn.disabled = false;
+          await updateMetaAddress(true);
+          return;
+        }
+
+        const call = makeCall(CONFIG.registryAddress, 'register_stealth_meta_address', [keyX, keyY]);
+        const tx = await account.execute([call]);
+
+        output.innerHTML = `
+          <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
+          <div class="output-row" style="margin-top: 0.5rem;">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+        `;
+
+        await waitForTx(tx.transaction_hash);
+
+        output.innerHTML = `
+          <div class="milestone">Milestone reached: meta-address published to the registry.</div>
+          <div class="status success">Meta-address registered!</div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">Address:</span>
+            <span class="output-value">${truncate(account.address)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+          <div class="divider"></div>
+          <div class="info-box">
+            Your meta-address is now public. Share your Starknet address with senders so they can look up your meta-address.
+          </div>
+        `;
+
+        registerBtn.textContent = 'Registered';
+        updateBtn.disabled = false;
+
+      } catch (err) {
+        console.error('Register error:', err);
+        output.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+        registerBtn.disabled = false;
+        updateBtn.disabled = false;
+        registerBtn.textContent = 'Register On-Chain';
+      }
+    }
+
+    async function updateMetaAddress(fromRegister) {
+      if (!account) {
+        alert('Please connect your wallet first');
+        return;
+      }
+
+      const keyX = document.getElementById('register-key-x').value;
+      const keyY = document.getElementById('register-key-y').value;
+
+      if (!keyX || !keyY) {
+        alert('Please generate or enter your keys first');
+        return;
+      }
+
+      const registerBtn = document.getElementById('register-btn');
+      const updateBtn = document.getElementById('update-btn');
+      registerBtn.disabled = true;
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Updating...';
+
+      const output = document.getElementById('register-output');
+      output.style.display = 'block';
+      if (!fromRegister) {
+        output.innerHTML = '<div class="status pending"><div class="spinner"></div>Updating meta-address...</div>';
+      }
+
+      try {
+        const call = makeCall(CONFIG.registryAddress, 'update_stealth_meta_address', [keyX, keyY]);
+        const tx = await account.execute([call]);
+
+        output.innerHTML = `
+          <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
+          <div class="output-row" style="margin-top: 0.5rem;">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+        `;
+
+        await waitForTx(tx.transaction_hash);
+
+        output.innerHTML = `
+          <div class="milestone">Milestone reached: meta-address updated on-chain.</div>
+          <div class="status success">Meta-address updated!</div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">Address:</span>
+            <span class="output-value">${truncate(account.address)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+          <div class="divider"></div>
+          <div class="info-box">
+            Your meta-address has been updated. Share your Starknet address with senders so they can look it up.
+          </div>
+        `;
+
+        registerBtn.textContent = 'Registered';
+        updateBtn.textContent = 'Updated';
+        registerBtn.disabled = false;
+        updateBtn.disabled = false;
+      } catch (err) {
+        console.error('Update error:', err);
+        output.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+        registerBtn.disabled = false;
+        updateBtn.disabled = false;
+        updateBtn.textContent = 'Update On-Chain';
+      }
+    }
+
+    // Scan announcements
+    async function scanAnnouncements() {
+      const privateKeyHex = document.getElementById('scan-private-key').value;
+      if (!privateKeyHex) {
+        alert('Please enter your private key');
+        return;
+      }
+
+      const privateKey = fromHex(privateKeyHex);
+      const publicKey = getPublicKey(privateKey);
+
+      const status = document.getElementById('scan-status');
+      status.style.display = 'flex';
+      status.className = 'status pending';
+      status.innerHTML = '<div class="spinner"></div>Scanning announcements...';
+
+      const results = document.getElementById('scan-results');
+      results.innerHTML = '<div style="color: #666;">Scanning...</div>';
+
+      try {
+        console.log('[scan] Starting scan for registry:', CONFIG.registryAddress);
+        console.log('[scan] Public key X:', truncate(toHex(publicKey.x)));
+        const allEvents = await fetchAnnouncementEvents();
+        const normalizedRegistry = normalizeAddress(CONFIG.registryAddress);
+        const relevant = allEvents.filter((ev) => {
+          const from = normalizeAddress(ev.from_address || '');
+          if (from !== normalizedRegistry) return false;
+          if (!ev.keys || !ev.data) return false;
+          return ev.keys.length >= 3 && ev.data.length >= 5;
+        });
+
+        const matches = [];
+        let html = `
+          <div style="color: #666; margin-bottom: 1rem;">
+            Scanned announcements from registry contract.
+            <br><br>
+            Your public key: ${truncate(toHex(publicKey.x))}
+            <br>
+            Total announcements scanned: ${relevant.length}
+          </div>
+          <div class="divider"></div>
+        `;
+
+        relevant.forEach((ev, idx) => {
+          const data = ev.data || [];
+          const keys = ev.keys || [];
+          const ephemeralX = data[0];
+          const ephemeralY = data[1];
+          const stealthAddress = data[2];
+          const viewTagOnChain = keys[2] ? Number(BigInt(keys[2]) % 256n) : null;
+
+          const ephemPoint = { x: fromHex(ephemeralX), y: fromHex(ephemeralY) };
+          const sharedSecret = pointMul(privateKey, ephemPoint);
+          const hashS = mod(simpleHash(sharedSecret.x, sharedSecret.y), CURVE_ORDER);
+          const computedViewTag = Number(hashS % 256n);
+
+          const isMatch = (viewTagOnChain !== null) && (computedViewTag === viewTagOnChain);
+          if (isMatch) {
+            const stealthPriv = mod(privateKey + hashS, CURVE_ORDER);
+            matches.push({
+              txHash: ev.transaction_hash,
+              index: data[4],
+              stealthPriv,
+              stealthAddress,
+              viewTag: computedViewTag
+            });
+          }
+
+          html += `
+            <div class="event-item">
+              <div><strong>Announcement ${idx + 1}</strong> ${isMatch ? '<span class="match-badge">MATCH</span>' : ''}</div>
+              <div>Ephemeral R.x: ${truncate(ephemeralX)}</div>
+              <div>Ephemeral R.y: ${truncate(ephemeralY)}</div>
+              <div>View Tag: ${viewTagOnChain !== null ? viewTagOnChain : 'n/a'} (computed ${computedViewTag})</div>
+              <div>Stealth Address: ${truncate(stealthAddress)}</div>
+              <div>TX: <a href="https://sepolia.starkscan.co/tx/${ev.transaction_hash}" target="_blank" class="tx-link">${truncate(ev.transaction_hash)}</a></div>
+            </div>
+          `;
+        });
+
+        if (relevant.length === 0) {
+          html += `<div style="color: #888; font-size: 0.7rem;">No announcement events found yet.</div>`;
+        }
+
+        if (matches.length > 0) {
+          let matchRows = '';
+          matches.forEach((m, i) => {
+            matchRows += `
+              <div class="output-row">
+                <span class="output-label">Match ${i + 1} TX:</span>
+                <a href="https://sepolia.starkscan.co/tx/${m.txHash}" target="_blank" class="tx-link">${truncate(m.txHash)}</a>
+              </div>
+              <div class="output-row">
+                <span class="output-label">Stealth Address:</span>
+                <span class="output-value">${truncate(m.stealthAddress)}</span>
+              </div>
+              <div class="output-row">
+                <span class="output-label">Stealth Private Key:</span>
+                <span class="output-value">${truncate(toHex(m.stealthPriv))}</span>
+              </div>
+              <div class="divider"></div>
+            `;
+          });
+
+          lastMatches = matches;
+          setClaimInputs(matches[0]);
+
+          html += `
+            <div class="divider"></div>
+            <div class="milestone">Milestone reached: matching stealth payment detected.</div>
+            <div class="info-box">
+              ${matches.length} matching announcement(s) found.
+              <div class="divider"></div>
+              ${matchRows}
+              <div style="color: #fca5a5; font-size: 0.7rem;">
+                Keep stealth private keys secure. They control the stealth accounts.
+              </div>
+            </div>
+          `;
+        }
+
+        results.innerHTML = html;
+
+        status.className = 'status success';
+        status.innerHTML = 'Scan complete';
+
+      } catch (err) {
+        console.error('Scan error:', err);
+        status.className = 'status error';
+        status.innerHTML = 'Scan failed: ' + err.message;
+      }
+    }
+
+    // Spend from stealth account using recovered private key
+    async function sendStealthTransfer() {
+      const stealthAddress = document.getElementById('claim-stealth-address').value.trim();
+      const stealthKey = document.getElementById('claim-stealth-key').value.trim();
+      const recipient = document.getElementById('claim-recipient').value.trim();
+      const amountStr = document.getElementById('claim-amount').value.trim();
+      const output = document.getElementById('claim-output');
+
+      if (!stealthAddress || !stealthKey || !recipient || !amountStr) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      output.style.display = 'block';
+      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Preparing stealth transfer...</div>';
+
+      try {
+        const deployed = await isContractDeployed(normalizeAddress(stealthAddress));
+        if (!deployed) {
+          output.innerHTML = `
+            <div class="status error">Stealth account not deployed.</div>
+            <div class="info-box">
+              This stealth address does not exist on-chain yet. Make sure you used the latest Deploy & Announce flow,
+              or select the newest matching announcement.
+            </div>
+          `;
+          return;
+        }
+
+        const sn = await getStarknetModule();
+        
+        // Use Alchemy v0_9 endpoint (latest supported version)
+        const rpcUrl = 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/cf52O0RwFy1mEB0uoYsel';
+        const provider = new sn.RpcProvider({ 
+          nodeUrl: rpcUrl
+        });
+        
+        // Create account
+        const accountFromKey = new sn.Account(
+          provider,
+          normalizeAddress(stealthAddress),
+          stealthKey,
+          '1'  // Cairo version 1
+        );
+
+        const amount = parseAmountToUint256(amountStr);
+        const transferCall = {
+          contractAddress: CONFIG.strkTokenAddress,
+          entrypoint: 'transfer',
+          calldata: [
+            normalizeAddress(recipient),
+            toHex(amount.low),
+            toHex(amount.high)
+          ]
+        };
+
+        console.log('[transfer] Executing transfer from stealth account...');
+        console.log('[transfer] From:', stealthAddress);
+        console.log('[transfer] To:', recipient);
+        console.log('[transfer] Amount:', amountStr, 'STRK');
+
+        // Execute transaction
+        const tx = await accountFromKey.execute([transferCall]);
+        output.innerHTML = `
+          <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
+          <div class="output-row" style="margin-top: 0.5rem;">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+        `;
+
+        await waitForTxOn(provider, tx.transaction_hash);
+
+        output.innerHTML = `
+          <div class="milestone">Milestone reached: stealth spend broadcast.</div>
+          <div class="status success">Transfer submitted</div>
+          <div class="divider"></div>
+          <div class="output-row">
+            <span class="output-label">TX:</span>
+            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Stealth transfer error:', err);
+        let errorMsg = err.message || 'Unknown error';
+        let helpText = '';
+        
+        // Parse common errors
+        if (errorMsg.includes('Cannot convert undefined to a BigInt') || errorMsg.includes('parseFeeEstimate')) {
+          helpText = `
+            <div class="info-box" style="margin-top: 0.5rem;">
+              <strong>Possible causes:</strong>
+              <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+                <li>The stealth account may not have enough STRK for gas fees</li>
+                <li>Try sending a smaller amount</li>
+                <li>Make sure the stealth address was funded in Step 4</li>
+              </ul>
+            </div>
+          `;
+        } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
+          helpText = `
+            <div class="info-box" style="margin-top: 0.5rem;">
+              The stealth account doesn't have enough balance. Make sure you funded it in Step 4.
+            </div>
+          `;
+        }
+        
+        output.innerHTML = `
+          <div class="status error">Error: ${errorMsg}</div>
+          ${helpText}
+        `;
+      }
+    }
+
+    async function setMaxStrkAmount() {
+      const stealthAddress = document.getElementById('claim-stealth-address').value.trim();
+      const amountInput = document.getElementById('claim-amount');
+      const output = document.getElementById('claim-output');
+      if (!stealthAddress) {
+        alert('Please enter a stealth address first');
+        return;
+      }
+      try {
+        console.log('[claim] Fetching STRK balance for:', stealthAddress);
+        if (output) {
+          output.style.display = 'block';
+          output.innerHTML = '<div class="status pending"><div class="spinner"></div>Fetching STRK balance...</div>';
+        }
+        const balance = await rpcCall(
+          CONFIG.strkTokenAddress,
+          'balanceOf',
+          [normalizeAddress(stealthAddress)]
+        );
+        if (!balance || balance.length < 2) {
+          throw new Error('Invalid balance response');
+        }
+        const amount = uint256ToBigInt(balance[0], balance[1]);
+        amountInput.value = formatUnits(amount, 18);
+        if (output) {
+          output.innerHTML = '<div class="status success">Max STRK balance loaded.</div>';
+        }
+      } catch (err) {
+        console.error('Max balance error:', err);
+        if (output) {
+          output.innerHTML = `<div class="status error">Failed to fetch STRK balance: ${err.message}</div>`;
+        } else {
+          alert('Failed to fetch STRK balance: ' + err.message);
+        }
+      }
+    }
+
+    // Detect wallets and show in debug panel
+    async function detectWallets() {
+      const output = document.getElementById('debug-output');
+      let html = '';
+      
+      // Check for wallet objects (not starknet.js library)
+      const starknetObjects = Object.keys(window).filter(k => 
+        k.startsWith('starknet_') && k !== 'starknet'
+      );
+      
+      html += `<strong>Direct wallet objects:</strong> ${starknetObjects.length > 0 ? starknetObjects.join(', ') : 'none found'}<br>`;
+      
+      if (window.starknet_braavos) {
+        html += `<span style="color: #4ade80;">starknet_braavos: FOUND</span><br>`;
+      }
+      
+      if (window.starknet_argentX) {
+        html += `<span style="color: #4ade80;">starknet_argentX: FOUND</span><br>`;
+      }
+      
+      // Check if window.starknet is library or wallet
+      if (window.starknet) {
+        const isLibrary = window.starknet.Account && window.starknet.Contract && window.starknet.RpcProvider;
+        if (isLibrary) {
+          html += `<span style="color: #f59e0b;">window.starknet: starknet.js LIBRARY (not a wallet)</span><br>`;
+        } else {
+          html += `<span style="color: #4ade80;">window.starknet: WALLET</span><br>`;
+        }
+      }
+      
+      // Check get-starknet
+      html += `<br><strong>get-starknet library:</strong> ${typeof getStarknet !== 'undefined' ? 'loaded' : 'not loaded'}<br>`;
+      
+      if (typeof getStarknet !== 'undefined' && getStarknet.getAvailableWallets) {
+        try {
+          const wallets = await getStarknet.getAvailableWallets();
+          html += `<strong>Available wallets:</strong> ${wallets.length > 0 ? wallets.map(w => w.name || w.id).join(', ') : 'none detected'}<br>`;
+          console.log('[detectWallets] Available wallets:', wallets);
+        } catch (e) {
+          html += `<span style="color: #f87171;">Error getting wallets: ${e.message}</span><br>`;
+        }
+      }
+      
+      html += `<br><span style="color: #888;">If no wallets detected, make sure extension is installed and enabled for localhost</span>`;
+      
+      output.innerHTML = html;
+      console.log('[detectWallets] Check complete');
+    }
+
+    function initDebugPanel() {
+      const panel = document.getElementById('debug-panel');
+      const btn = document.getElementById('debug-toggle');
+      const params = new URLSearchParams(window.location.search);
+      const show = params.get('debug') === '1' || localStorage.getItem('showWalletDebug') === '1';
+      panel.style.display = show ? 'block' : 'none';
+      btn.textContent = show ? 'Hide Wallet Debug' : 'Show Wallet Debug';
+      if (show) {
+        setTimeout(detectWallets, 1000);
+      }
+    }
+
+    function toggleDebugPanel() {
+      const panel = document.getElementById('debug-panel');
+      const btn = document.getElementById('debug-toggle');
+      const visible = panel.style.display === 'block';
+      const next = !visible;
+      panel.style.display = next ? 'block' : 'none';
+      btn.textContent = next ? 'Hide Wallet Debug' : 'Show Wallet Debug';
+      localStorage.setItem('showWalletDebug', next ? '1' : '0');
+      if (next) {
+        setTimeout(detectWallets, 500);
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initDebugPanel();
+      console.log('[init] Page loaded, wallet detection scheduled');
+    });
+  </script>
+</body>
+</html>
