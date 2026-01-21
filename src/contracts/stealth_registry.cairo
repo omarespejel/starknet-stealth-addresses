@@ -25,6 +25,7 @@ pub mod StealthRegistry {
     use starknet_stealth_addresses::types::meta_address::{StealthMetaAddress, StealthMetaAddressTrait};
     use starknet_stealth_addresses::errors::Errors;
     use starknet_stealth_addresses::crypto::constants::is_valid_public_key;
+    use starknet_stealth_addresses::types::announcement::SchemeId;
 
     // ========================================================================
     // CONSTANTS
@@ -88,6 +89,8 @@ pub mod StealthRegistry {
         pub scheme_id: u8,
         pub spending_pubkey_x: felt252,
         pub spending_pubkey_y: felt252,
+        pub viewing_pubkey_x: felt252,
+        pub viewing_pubkey_y: felt252,
     }
 
     /// Emitted when a user updates their stealth meta-address
@@ -98,6 +101,8 @@ pub mod StealthRegistry {
         pub scheme_id: u8,
         pub spending_pubkey_x: felt252,
         pub spending_pubkey_y: felt252,
+        pub viewing_pubkey_x: felt252,
+        pub viewing_pubkey_y: felt252,
     }
 
     /// Emitted when a stealth payment is announced
@@ -176,7 +181,10 @@ pub mod StealthRegistry {
         fn register_stealth_meta_address(
             ref self: ContractState,
             spending_pubkey_x: felt252,
-            spending_pubkey_y: felt252
+            spending_pubkey_y: felt252,
+            viewing_pubkey_x: felt252,
+            viewing_pubkey_y: felt252,
+            scheme_id: u8
         ) {
             let caller = get_caller_address();
             
@@ -184,26 +192,42 @@ pub mod StealthRegistry {
             let existing = self.meta_addresses.entry(caller).read();
             assert(!existing.is_valid(), Errors::META_ADDRESS_ALREADY_REGISTERED);
             
-            // Validate public key (non-zero; optional strict curve check)
+            // Validate keys (non-zero, canonical Y, on-curve)
             assert(
-                is_valid_public_key(spending_pubkey_x, spending_pubkey_y), 
+                is_valid_public_key(spending_pubkey_x, spending_pubkey_y),
                 Errors::INVALID_META_ADDRESS
             );
+            assert(
+                is_valid_public_key(viewing_pubkey_x, viewing_pubkey_y),
+                Errors::INVALID_META_ADDRESS
+            );
+
+            // Validate scheme and key relationship
+            if scheme_id == SchemeId::STARK_CURVE_ECDH {
+                assert(spending_pubkey_x == viewing_pubkey_x, Errors::INVALID_META_ADDRESS);
+                assert(spending_pubkey_y == viewing_pubkey_y, Errors::INVALID_META_ADDRESS);
+            } else if scheme_id != SchemeId::STARK_CURVE_DUAL_KEY {
+                assert(false, Errors::INVALID_SCHEME_ID);
+            }
             
             // Store meta-address
             let meta_address = StealthMetaAddress {
-                scheme_id: 0, // STARK curve ECDH
+                scheme_id,
                 spending_pubkey_x,
                 spending_pubkey_y,
+                viewing_pubkey_x,
+                viewing_pubkey_y,
             };
             self.meta_addresses.entry(caller).write(meta_address);
             
             // Emit event
             self.emit(MetaAddressRegistered {
                 user: caller,
-                scheme_id: 0,
+                scheme_id,
                 spending_pubkey_x,
                 spending_pubkey_y,
+                viewing_pubkey_x,
+                viewing_pubkey_y,
             });
         }
 
@@ -211,7 +235,10 @@ pub mod StealthRegistry {
         fn update_stealth_meta_address(
             ref self: ContractState,
             spending_pubkey_x: felt252,
-            spending_pubkey_y: felt252
+            spending_pubkey_y: felt252,
+            viewing_pubkey_x: felt252,
+            viewing_pubkey_y: felt252,
+            scheme_id: u8
         ) {
             let caller = get_caller_address();
             
@@ -224,21 +251,36 @@ pub mod StealthRegistry {
                 is_valid_public_key(spending_pubkey_x, spending_pubkey_y), 
                 Errors::INVALID_META_ADDRESS
             );
+            assert(
+                is_valid_public_key(viewing_pubkey_x, viewing_pubkey_y),
+                Errors::INVALID_META_ADDRESS
+            );
+
+            if scheme_id == SchemeId::STARK_CURVE_ECDH {
+                assert(spending_pubkey_x == viewing_pubkey_x, Errors::INVALID_META_ADDRESS);
+                assert(spending_pubkey_y == viewing_pubkey_y, Errors::INVALID_META_ADDRESS);
+            } else if scheme_id != SchemeId::STARK_CURVE_DUAL_KEY {
+                assert(false, Errors::INVALID_SCHEME_ID);
+            }
             
             // Update meta-address
             let meta_address = StealthMetaAddress {
-                scheme_id: 0,
+                scheme_id,
                 spending_pubkey_x,
                 spending_pubkey_y,
+                viewing_pubkey_x,
+                viewing_pubkey_y,
             };
             self.meta_addresses.entry(caller).write(meta_address);
             
             // Emit event
             self.emit(MetaAddressUpdated {
                 user: caller,
-                scheme_id: 0,
+                scheme_id,
                 spending_pubkey_x,
                 spending_pubkey_y,
+                viewing_pubkey_x,
+                viewing_pubkey_y,
             });
         }
 
@@ -246,9 +288,8 @@ pub mod StealthRegistry {
         fn get_stealth_meta_address(
             self: @ContractState,
             user: ContractAddress
-        ) -> (felt252, felt252) {
-            let meta = self.meta_addresses.entry(user).read();
-            (meta.spending_pubkey_x, meta.spending_pubkey_y)
+        ) -> StealthMetaAddress {
+            self.meta_addresses.entry(user).read()
         }
 
         /// Check if user has registered
@@ -267,8 +308,12 @@ pub mod StealthRegistry {
             view_tag: u8,
             metadata: felt252
         ) {
-            // Only scheme 0 supported (STARK curve ECDH)
-            assert(scheme_id == 0, Errors::INVALID_SCHEME_ID);
+            // Only schemes 0 and 1 supported (STARK curve ECDH)
+            assert(
+                scheme_id == SchemeId::STARK_CURVE_ECDH
+                    || scheme_id == SchemeId::STARK_CURVE_DUAL_KEY,
+                Errors::INVALID_SCHEME_ID
+            );
 
             // Validate ephemeral key (non-zero; optional strict curve check)
             assert(

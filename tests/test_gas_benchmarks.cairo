@@ -59,7 +59,13 @@ fn test_gas_benchmark_register_meta_address() {
     start_cheat_caller_address(registry.contract_address, caller);
     
     // This operation should be efficient - users register once
-    registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+    registry.register_stealth_meta_address(
+        StarkCurve::GEN_X,
+        StarkCurve::GEN_Y,
+        StarkCurve::GEN_X,
+        StarkCurve::GEN_Y,
+        0
+    );
     
     // Gas is logged by snforge - check output for l2_gas
     // Target: < 1M l2_gas for registration
@@ -73,10 +79,16 @@ fn test_gas_benchmark_lookup_meta_address() {
     let caller = contract_address_const::<0x123>();
     
     start_cheat_caller_address(registry.contract_address, caller);
-    registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+    registry.register_stealth_meta_address(
+        StarkCurve::GEN_X,
+        StarkCurve::GEN_Y,
+        StarkCurve::GEN_X,
+        StarkCurve::GEN_Y,
+        0
+    );
     
     // Lookup should be very cheap - it's a read operation
-    let (_x, _y) = registry.get_stealth_meta_address(caller);
+    let _meta = registry.get_stealth_meta_address(caller);
     
     // Target: < 500K l2_gas for lookup
 }
@@ -164,16 +176,22 @@ fn test_gas_efficiency_multiple_lookups() {
     while i < 10 {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.register_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         i += 1;
     };
     
     // Lookups should be O(1), not affected by registry size
     let first_user = contract_address_const::<0x101>();
-    let (_x, _y) = registry.get_stealth_meta_address(first_user);
+    let meta = registry.get_stealth_meta_address(first_user);
     
     // Verify lookup still works
-    assert(_x == StarkCurve::GEN_X, 'Lookup failed');
+    assert(meta.spending_pubkey_x == StarkCurve::GEN_X, 'Lookup failed');
 }
 
 /// Test: Announcement count should be O(1)

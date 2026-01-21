@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+use starknet_stealth_addresses::types::meta_address::StealthMetaAddress;
 
 /// Stealth Meta-Address Registry Interface
 ///
@@ -25,6 +26,9 @@ pub trait IStealthRegistry<TContractState> {
     /// # Arguments
     /// * `spending_pubkey_x` - X coordinate of the spending public key
     /// * `spending_pubkey_y` - Y coordinate of the spending public key
+    /// * `viewing_pubkey_x` - X coordinate of the viewing public key
+    /// * `viewing_pubkey_y` - Y coordinate of the viewing public key
+    /// * `scheme_id` - 0 = single-key, 1 = dual-key
     ///
     /// # Requirements
     /// - Caller must not have already registered (call update_stealth_meta_address instead)
@@ -35,7 +39,10 @@ pub trait IStealthRegistry<TContractState> {
     fn register_stealth_meta_address(
         ref self: TContractState,
         spending_pubkey_x: felt252,
-        spending_pubkey_y: felt252
+        spending_pubkey_y: felt252,
+        viewing_pubkey_x: felt252,
+        viewing_pubkey_y: felt252,
+        scheme_id: u8
     );
     
     /// Update an existing stealth meta-address
@@ -43,6 +50,9 @@ pub trait IStealthRegistry<TContractState> {
     /// # Arguments
     /// * `spending_pubkey_x` - New X coordinate
     /// * `spending_pubkey_y` - New Y coordinate
+    /// * `viewing_pubkey_x` - New viewing X coordinate
+    /// * `viewing_pubkey_y` - New viewing Y coordinate
+    /// * `scheme_id` - 0 = single-key, 1 = dual-key
     ///
     /// # Requirements
     /// - Caller must have previously registered
@@ -53,7 +63,10 @@ pub trait IStealthRegistry<TContractState> {
     fn update_stealth_meta_address(
         ref self: TContractState,
         spending_pubkey_x: felt252,
-        spending_pubkey_y: felt252
+        spending_pubkey_y: felt252,
+        viewing_pubkey_x: felt252,
+        viewing_pubkey_y: felt252,
+        scheme_id: u8
     );
     
     /// Get the stealth meta-address for a user
@@ -62,12 +75,12 @@ pub trait IStealthRegistry<TContractState> {
     /// * `user` - The user's contract address
     ///
     /// # Returns
-    /// Tuple of (spending_pubkey_x, spending_pubkey_y)
-    /// Returns (0, 0) if not registered
+    /// Full meta-address (spending + viewing + scheme_id)
+    /// Returns empty fields if not registered
     fn get_stealth_meta_address(
         self: @TContractState,
         user: ContractAddress
-    ) -> (felt252, felt252);
+    ) -> StealthMetaAddress;
     
     /// Check if a user has registered a meta-address
     fn has_meta_address(self: @TContractState, user: ContractAddress) -> bool;
@@ -82,7 +95,7 @@ pub trait IStealthRegistry<TContractState> {
     /// scan and detect payments addressed to them.
     ///
     /// # Arguments
-    /// * `scheme_id` - Cryptographic scheme identifier (0 = STARK curve ECDH)
+    /// * `scheme_id` - Cryptographic scheme identifier (0 = single-key, 1 = dual-key)
     /// * `ephemeral_pubkey_x` - X coordinate of sender's ephemeral public key
     /// * `ephemeral_pubkey_y` - Y coordinate of sender's ephemeral public key
     /// * `stealth_address` - The derived stealth address receiving funds
@@ -90,7 +103,7 @@ pub trait IStealthRegistry<TContractState> {
     /// * `metadata` - Optional metadata (token type, amount hint, etc.)
     ///
     /// # Requirements
-    /// - scheme_id MUST be 0 (single-key STARK curve ECDH)
+    /// - scheme_id MUST be 0 or 1 (STARK curve ECDH variants)
     ///
     /// # Emits
     /// - `Announcement` event (indexed by scheme_id and view_tag)

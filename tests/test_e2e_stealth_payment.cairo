@@ -31,15 +31,18 @@ fn test_e2e_complete_stealth_payment() {
     start_cheat_caller_address(infra.registry_address, alice());
     infra.registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     
     assert(infra.registry.has_meta_address(alice()), 'Alice should be registered');
     
     // STEP 2: Bob looks up Alice
-    let (alice_meta_x, _) = infra.registry.get_stealth_meta_address(alice());
-    assert(alice_meta_x != 0, 'Should find Alice meta-address');
+    let alice_meta = infra.registry.get_stealth_meta_address(alice());
+    assert(alice_meta.spending_pubkey_x != 0, 'Should find Alice meta-address');
     
     // STEP 3: Bob computes stealth address
     let stealth_pubkey_x = test_keys::TEST_STEALTH_PUBKEY_X;
@@ -88,7 +91,10 @@ fn test_e2e_multiple_senders_single_recipient() {
     start_cheat_caller_address(infra.registry_address, alice());
     infra.registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     

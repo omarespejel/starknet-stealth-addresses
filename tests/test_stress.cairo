@@ -87,7 +87,13 @@ fn test_stress_many_user_registrations() {
     while i < num_users {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.register_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         
         // Verify registration
         assert(registry.has_meta_address(caller), 'Registration failed');
@@ -180,7 +186,13 @@ fn test_stress_interleaved_operations() {
     while i < num_users {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.register_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         i += 1;
     };
     
@@ -225,7 +237,13 @@ fn test_stress_rapid_registrations() {
     while i < num_users {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.register_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         i += 1;
     };
     
@@ -254,7 +272,13 @@ fn test_stress_updates_under_load() {
     while i < num_users {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.register_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.register_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         i += 1;
     };
     
@@ -263,11 +287,17 @@ fn test_stress_updates_under_load() {
     while i < num_users {
         let caller = *users.at(i);
         start_cheat_caller_address(registry.contract_address, caller);
-        registry.update_stealth_meta_address(StarkCurve::GEN_X, StarkCurve::GEN_Y);
+        registry.update_stealth_meta_address(
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            StarkCurve::GEN_X,
+            StarkCurve::GEN_Y,
+            0
+        );
         
         // Verify update worked
-        let (x, _y) = registry.get_stealth_meta_address(caller);
-        assert(x == StarkCurve::GEN_X, 'Update failed');
+        let meta = registry.get_stealth_meta_address(caller);
+        assert(meta.spending_pubkey_x == StarkCurve::GEN_X, 'Update failed');
         i += 1;
     };
 }

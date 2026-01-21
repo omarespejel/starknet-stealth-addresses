@@ -117,8 +117,7 @@ fn test_unit_factory_compute_matches_deploy_critical() {
         (test_keys::TEST_STEALTH_PUBKEY_X, test_keys::TEST_STEALTH_PUBKEY_Y, test_keys::TEST_SALT),
         (test_keys::Alice::PUBKEY_X, test_keys::Alice::PUBKEY_Y, 12345),
         (test_keys::Bob::PUBKEY_X, test_keys::Bob::PUBKEY_Y, 99999),
-        // Edge case: small values
-        (1, 2, 1),
+        (test_keys::Charlie::PUBKEY_X, test_keys::Charlie::PUBKEY_Y, 1),
         // Edge case: large salt
         (test_keys::TEST_STEALTH_PUBKEY_X, test_keys::TEST_STEALTH_PUBKEY_Y, 0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff),
     ];

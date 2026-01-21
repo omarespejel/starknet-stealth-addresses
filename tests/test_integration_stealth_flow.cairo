@@ -29,11 +29,16 @@ fn test_integration_register_and_lookup() {
     start_cheat_caller_address(infra.registry_address, alice());
     infra.registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     
-    let (x, y) = infra.registry.get_stealth_meta_address(alice());
+    let meta = infra.registry.get_stealth_meta_address(alice());
+    let x = meta.spending_pubkey_x;
+    let y = meta.spending_pubkey_y;
     
     assert(x == test_keys::Alice::PUBKEY_X, 'Lookup X correct');
     assert(y == test_keys::Alice::PUBKEY_Y, 'Lookup Y correct');
@@ -84,19 +89,31 @@ fn test_integration_multiple_recipients() {
     
     start_cheat_caller_address(infra.registry_address, alice());
     infra.registry.register_stealth_meta_address(
-        test_keys::Alice::PUBKEY_X, test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     
     start_cheat_caller_address(infra.registry_address, bob());
     infra.registry.register_stealth_meta_address(
-        test_keys::Bob::PUBKEY_X, test_keys::Bob::PUBKEY_Y
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     
     start_cheat_caller_address(infra.registry_address, charlie());
     infra.registry.register_stealth_meta_address(
-        test_keys::Charlie::PUBKEY_X, test_keys::Charlie::PUBKEY_Y
+        test_keys::Charlie::PUBKEY_X,
+        test_keys::Charlie::PUBKEY_Y,
+        test_keys::Charlie::PUBKEY_X,
+        test_keys::Charlie::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(infra.registry_address);
     

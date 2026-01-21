@@ -20,7 +20,13 @@ fn test_security_registry_reject_zero_x() {
     let (_, registry) = deploy_registry();
     
     start_cheat_caller_address(registry.contract_address, alice());
-    registry.register_stealth_meta_address(0, test_keys::Alice::PUBKEY_Y);
+    registry.register_stealth_meta_address(
+        0,
+        test_keys::Alice::PUBKEY_Y,
+        0,
+        test_keys::Alice::PUBKEY_Y,
+        0
+    );
 }
 
 #[test]
@@ -29,7 +35,13 @@ fn test_security_registry_reject_zero_y() {
     let (_, registry) = deploy_registry();
     
     start_cheat_caller_address(registry.contract_address, alice());
-    registry.register_stealth_meta_address(test_keys::Alice::PUBKEY_X, 0);
+    registry.register_stealth_meta_address(
+        test_keys::Alice::PUBKEY_X,
+        0,
+        test_keys::Alice::PUBKEY_X,
+        0,
+        0
+    );
 }
 
 #[test]
@@ -56,8 +68,8 @@ fn test_security_registry_announce_reject_invalid_scheme() {
     let (_, registry) = deploy_registry();
     let stealth_addr = contract_address_const::<'stealth1'>();
 
-    // Only scheme_id == 0 is supported
-    registry.announce(1, test_keys::TEST_EPHEMERAL_PUBKEY_X, test_keys::TEST_EPHEMERAL_PUBKEY_Y, stealth_addr, 42, 0);
+    // Only scheme_id == 0 or 1 is supported
+    registry.announce(2, test_keys::TEST_EPHEMERAL_PUBKEY_X, test_keys::TEST_EPHEMERAL_PUBKEY_Y, stealth_addr, 42, 0);
 }
 
 #[test]
@@ -113,12 +125,18 @@ fn test_security_registry_cannot_double_register() {
     
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     
     registry.register_stealth_meta_address(
         test_keys::Bob::PUBKEY_X,
-        test_keys::Bob::PUBKEY_Y
+        test_keys::Bob::PUBKEY_Y,
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        0
     );
 }
 
@@ -130,7 +148,10 @@ fn test_security_registry_cannot_update_unregistered() {
     start_cheat_caller_address(registry.contract_address, alice());
     registry.update_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
 }
 
@@ -141,14 +162,17 @@ fn test_security_registry_user_isolation() {
     start_cheat_caller_address(registry.contract_address, alice());
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(registry.contract_address);
     
     start_cheat_caller_address(registry.contract_address, bob());
     assert(!registry.has_meta_address(bob()), 'Bob should not be registered');
     
-    let (ax, ay) = registry.get_stealth_meta_address(alice());
-    assert(ax == test_keys::Alice::PUBKEY_X, 'Alice X unchanged');
-    assert(ay == test_keys::Alice::PUBKEY_Y, 'Alice Y unchanged');
+    let meta = registry.get_stealth_meta_address(alice());
+    assert(meta.spending_pubkey_x == test_keys::Alice::PUBKEY_X, 'Alice X unchanged');
+    assert(meta.spending_pubkey_y == test_keys::Alice::PUBKEY_Y, 'Alice Y unchanged');
 }

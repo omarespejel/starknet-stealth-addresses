@@ -63,12 +63,12 @@ fn test_fuzz_registry_accepts_nonzero_keys(x: felt252, y: felt252) {
     start_cheat_caller_address(registry.contract_address, caller);
     
     // Should not panic for any non-zero values
-    registry.register_stealth_meta_address(x, y);
+    registry.register_stealth_meta_address(x, y, x, y, 0);
     
     // Verify it was stored
-    let (stored_x, stored_y) = registry.get_stealth_meta_address(caller);
-    assert(stored_x == x, 'X mismatch');
-    assert(stored_y == y, 'Y mismatch');
+    let meta = registry.get_stealth_meta_address(caller);
+    assert(meta.spending_pubkey_x == x, 'X mismatch');
+    assert(meta.spending_pubkey_y == y, 'Y mismatch');
 }
 
 /// Fuzz test: Announcements with valid ephemeral keys should work
@@ -225,15 +225,15 @@ fn test_invariant_registered_user_can_lookup(x: felt252, y: felt252) {
     let caller = contract_address_const::<0x789>();
     
     start_cheat_caller_address(registry.contract_address, caller);
-    registry.register_stealth_meta_address(x, y);
+    registry.register_stealth_meta_address(x, y, x, y, 0);
     
     // INVARIANT: has_meta_address must return true after registration
     assert(registry.has_meta_address(caller), 'Invariant: has_meta violated');
     
     // INVARIANT: get_stealth_meta_address must return the registered values
-    let (got_x, got_y) = registry.get_stealth_meta_address(caller);
-    assert(got_x == x, 'Invariant: x mismatch');
-    assert(got_y == y, 'Invariant: y mismatch');
+    let meta = registry.get_stealth_meta_address(caller);
+    assert(meta.spending_pubkey_x == x, 'Invariant: x mismatch');
+    assert(meta.spending_pubkey_y == y, 'Invariant: y mismatch');
 }
 
 /// Invariant: Announcement count must always increase
@@ -276,7 +276,7 @@ fn test_invariant_announcement_count_increases(
 #[test]
 #[fuzzer(runs: 20, seed: 88888)]
 fn test_invariant_compute_matches_deploy(x: felt252, y: felt252, salt: felt252) {
-    if x == 0 || y == 0 {
+    if !is_valid_public_key(x, y) {
         return;
     }
     

@@ -34,14 +34,39 @@ fn test_unit_registry_register_meta_address() {
     
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     
     stop_cheat_caller_address(registry.contract_address);
     
-    let (x, y) = registry.get_stealth_meta_address(alice());
-    assert(x == test_keys::Alice::PUBKEY_X, 'Wrong pubkey X');
-    assert(y == test_keys::Alice::PUBKEY_Y, 'Wrong pubkey Y');
+    let meta = registry.get_stealth_meta_address(alice());
+    assert(meta.spending_pubkey_x == test_keys::Alice::PUBKEY_X, 'Wrong pubkey X');
+    assert(meta.spending_pubkey_y == test_keys::Alice::PUBKEY_Y, 'Wrong pubkey Y');
+}
+
+#[test]
+fn test_unit_registry_register_meta_address_dual_key() {
+    let (_, registry) = deploy_registry();
+
+    start_cheat_caller_address(registry.contract_address, alice());
+
+    registry.register_stealth_meta_address(
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        1
+    );
+
+    stop_cheat_caller_address(registry.contract_address);
+
+    let meta = registry.get_stealth_meta_address(alice());
+    assert(meta.scheme_id == 1, 'Scheme should be dual-key');
+    assert(meta.spending_pubkey_x == test_keys::Alice::PUBKEY_X, 'Spending X mismatch');
+    assert(meta.viewing_pubkey_x == test_keys::Bob::PUBKEY_X, 'Viewing X mismatch');
 }
 
 #[test]
@@ -53,7 +78,10 @@ fn test_unit_registry_has_meta_address() {
     start_cheat_caller_address(registry.contract_address, alice());
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(registry.contract_address);
     
@@ -64,9 +92,9 @@ fn test_unit_registry_has_meta_address() {
 fn test_unit_registry_get_unregistered_returns_zero() {
     let (_, registry) = deploy_registry();
     
-    let (x, y) = registry.get_stealth_meta_address(alice());
-    assert(x == 0, 'Unregistered X should be 0');
-    assert(y == 0, 'Unregistered Y should be 0');
+    let meta = registry.get_stealth_meta_address(alice());
+    assert(meta.spending_pubkey_x == 0, 'Unregistered X should be 0');
+    assert(meta.spending_pubkey_y == 0, 'Unregistered Y should be 0');
 }
 
 #[test]
@@ -77,19 +105,25 @@ fn test_unit_registry_update_meta_address() {
     
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     
     registry.update_stealth_meta_address(
         test_keys::Bob::PUBKEY_X,
-        test_keys::Bob::PUBKEY_Y
+        test_keys::Bob::PUBKEY_Y,
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        0
     );
     
     stop_cheat_caller_address(registry.contract_address);
     
-    let (x, y) = registry.get_stealth_meta_address(alice());
-    assert(x == test_keys::Bob::PUBKEY_X, 'Update failed - wrong X');
-    assert(y == test_keys::Bob::PUBKEY_Y, 'Update failed - wrong Y');
+    let meta = registry.get_stealth_meta_address(alice());
+    assert(meta.spending_pubkey_x == test_keys::Bob::PUBKEY_X, 'Update failed - wrong X');
+    assert(meta.spending_pubkey_y == test_keys::Bob::PUBKEY_Y, 'Update failed - wrong Y');
 }
 
 #[test]
@@ -99,24 +133,30 @@ fn test_unit_registry_multiple_users() {
     start_cheat_caller_address(registry.contract_address, alice());
     registry.register_stealth_meta_address(
         test_keys::Alice::PUBKEY_X,
-        test_keys::Alice::PUBKEY_Y
+        test_keys::Alice::PUBKEY_Y,
+        test_keys::Alice::PUBKEY_X,
+        test_keys::Alice::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(registry.contract_address);
     
     start_cheat_caller_address(registry.contract_address, bob());
     registry.register_stealth_meta_address(
         test_keys::Bob::PUBKEY_X,
-        test_keys::Bob::PUBKEY_Y
+        test_keys::Bob::PUBKEY_Y,
+        test_keys::Bob::PUBKEY_X,
+        test_keys::Bob::PUBKEY_Y,
+        0
     );
     stop_cheat_caller_address(registry.contract_address);
     
-    let (ax, ay) = registry.get_stealth_meta_address(alice());
-    let (bx, by) = registry.get_stealth_meta_address(bob());
+    let alice_meta = registry.get_stealth_meta_address(alice());
+    let bob_meta = registry.get_stealth_meta_address(bob());
     
-    assert(ax == test_keys::Alice::PUBKEY_X, 'Alice X wrong');
-    assert(ay == test_keys::Alice::PUBKEY_Y, 'Alice Y wrong');
-    assert(bx == test_keys::Bob::PUBKEY_X, 'Bob X wrong');
-    assert(by == test_keys::Bob::PUBKEY_Y, 'Bob Y wrong');
+    assert(alice_meta.spending_pubkey_x == test_keys::Alice::PUBKEY_X, 'Alice X wrong');
+    assert(alice_meta.spending_pubkey_y == test_keys::Alice::PUBKEY_Y, 'Alice Y wrong');
+    assert(bob_meta.spending_pubkey_x == test_keys::Bob::PUBKEY_X, 'Bob X wrong');
+    assert(bob_meta.spending_pubkey_y == test_keys::Bob::PUBKEY_Y, 'Bob Y wrong');
 }
 
 // ============================================================================

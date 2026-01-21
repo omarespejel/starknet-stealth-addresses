@@ -10,18 +10,18 @@
 /// - SNIP-43: Unified addresses and viewing keys
 ///
 /// ## Cryptographic Details
-/// The meta-address contains only the spending public key.
-/// For the simplified single-key scheme:
-/// - `spending_pubkey` = G * spending_private_key
+/// The meta-address contains both spending and viewing public keys.
 /// 
-/// For future dual-key schemes (view + spend separation):
-/// - Add `viewing_pubkey_x` and `viewing_pubkey_y` fields
-/// - Set scheme_id to indicate dual-key scheme
+/// For the single-key scheme:
+/// - `viewing_pubkey` == `spending_pubkey`
+/// 
+/// For the dual-key scheme:
+/// - `viewing_pubkey` is distinct and used only for scanning
 #[derive(Copy, Drop, Serde, starknet::Store, PartialEq, Debug)]
 pub struct StealthMetaAddress {
     /// Cryptographic scheme version
     /// 0 = Single-key STARK curve ECDH
-    /// 1 = Dual-key (view + spend) - future
+    /// 1 = Dual-key (view + spend)
     pub scheme_id: u8,
     
     /// X coordinate of spending public key on STARK curve
@@ -29,6 +29,12 @@ pub struct StealthMetaAddress {
     
     /// Y coordinate of spending public key on STARK curve
     pub spending_pubkey_y: felt252,
+
+    /// X coordinate of viewing public key on STARK curve
+    pub viewing_pubkey_x: felt252,
+
+    /// Y coordinate of viewing public key on STARK curve
+    pub viewing_pubkey_y: felt252,
 }
 
 impl StealthMetaAddressDefault of Default<StealthMetaAddress> {
@@ -37,6 +43,8 @@ impl StealthMetaAddressDefault of Default<StealthMetaAddress> {
             scheme_id: 0,
             spending_pubkey_x: 0,
             spending_pubkey_y: 0,
+            viewing_pubkey_x: 0,
+            viewing_pubkey_y: 0,
         }
     }
 }
@@ -45,12 +53,29 @@ impl StealthMetaAddressDefault of Default<StealthMetaAddress> {
 pub impl StealthMetaAddressImpl of StealthMetaAddressTrait {
     /// Check if the meta-address is valid (non-zero)
     fn is_valid(self: @StealthMetaAddress) -> bool {
-        *self.spending_pubkey_x != 0 && *self.spending_pubkey_y != 0
+        if *self.spending_pubkey_x == 0 || *self.spending_pubkey_y == 0 {
+            return false;
+        }
+        if *self.viewing_pubkey_x == 0 || *self.viewing_pubkey_y == 0 {
+            return false;
+        }
+
+        if *self.scheme_id == 0 {
+            *self.spending_pubkey_x == *self.viewing_pubkey_x
+                && *self.spending_pubkey_y == *self.viewing_pubkey_y
+        } else if *self.scheme_id == 1 {
+            true
+        } else {
+            false
+        }
     }
     
     /// Check if the meta-address is empty/unregistered
     fn is_empty(self: @StealthMetaAddress) -> bool {
-        *self.spending_pubkey_x == 0 && *self.spending_pubkey_y == 0
+        *self.spending_pubkey_x == 0
+            && *self.spending_pubkey_y == 0
+            && *self.viewing_pubkey_x == 0
+            && *self.viewing_pubkey_y == 0
     }
     
     /// Create a new meta-address with scheme 0 (STARK curve ECDH)
@@ -59,6 +84,24 @@ pub impl StealthMetaAddressImpl of StealthMetaAddressTrait {
             scheme_id: 0,
             spending_pubkey_x,
             spending_pubkey_y,
+            viewing_pubkey_x: spending_pubkey_x,
+            viewing_pubkey_y: spending_pubkey_y,
+        }
+    }
+
+    /// Create a new dual-key meta-address (scheme 1)
+    fn new_dual(
+        spending_pubkey_x: felt252,
+        spending_pubkey_y: felt252,
+        viewing_pubkey_x: felt252,
+        viewing_pubkey_y: felt252
+    ) -> StealthMetaAddress {
+        StealthMetaAddress {
+            scheme_id: 1,
+            spending_pubkey_x,
+            spending_pubkey_y,
+            viewing_pubkey_x,
+            viewing_pubkey_y,
         }
     }
 }
