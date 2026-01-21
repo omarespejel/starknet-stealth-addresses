@@ -1,0 +1,31 @@
+{
+  "name": "@starknet-stealth/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Starknet Stealth Addresses",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "starknet",
+    "stealth",
+    "privacy",
+    "addresses",
+    "ecdh"
+  ],
+  "author": "Starknet Privacy Team",
+  "license": "MIT",
+  "dependencies": {
+    "@scure/starknet": "^1.0.0",
+    "starknet": "^6.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
