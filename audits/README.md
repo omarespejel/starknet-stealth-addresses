@@ -38,5 +38,6 @@
 
 #### Commit References
 
-Changes are currently **uncommitted** in this working tree. Once commits exist,
-list them here for traceability.
+Remediations listed above are **applied and committed** in the repository.
+This summary reflects the current contract code and deployments in
+`deployments/sepolia.json`.
