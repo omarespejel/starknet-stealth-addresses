@@ -22,4 +22,7 @@ pub trait IStealthRegistryAdmin<TContractState> {
 
     /// Accept ownership transfer
     fn accept_ownership(ref self: TContractState);
+
+    /// Cancel pending ownership transfer
+    fn cancel_ownership_transfer(ref self: TContractState);
 }

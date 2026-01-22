@@ -110,4 +110,16 @@ pub mod AddressComputation {
     /// Prefix for contract address calculation
     /// ASCII: "STARKNET_CONTRACT_ADDRESS"
     pub const CONTRACT_ADDRESS_PREFIX: felt252 = 'STARKNET_CONTRACT_ADDRESS';
+
+    /// Contract address range upper bound (2^251)
+    pub const CONTRACT_ADDRESS_BOUND: felt252 =
+        0x800000000000000000000000000000000000000000000000000000000000000;
+
+    /// Normalize a raw hash into the contract address domain
+    pub fn normalize_contract_address_hash(raw_hash: felt252) -> felt252 {
+        let raw_u256: u256 = raw_hash.into();
+        let bound_u256: u256 = CONTRACT_ADDRESS_BOUND.into();
+        let normalized_u256 = raw_u256 % bound_u256;
+        normalized_u256.try_into().unwrap()
+    }
 }

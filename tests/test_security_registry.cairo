@@ -1,6 +1,9 @@
 /// Security Tests for StealthRegistry Contract
 
-use snforge_std::{start_cheat_caller_address, stop_cheat_caller_address};
+use snforge_std::{
+    start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_block_number, stop_cheat_block_number,
+};
 use starknet::contract_address_const;
 
 use starknet_stealth_addresses::interfaces::i_stealth_registry::IStealthRegistryDispatcherTrait;
@@ -83,6 +86,17 @@ fn test_security_registry_admin_only_owner() {
 }
 
 #[test]
+#[should_panic(expected: 'STEALTH: min gap too large')]
+fn test_security_registry_admin_gap_too_large_rejected() {
+    let (_, registry) = deploy_registry();
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry.contract_address };
+
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry.contract_address, owner);
+    admin.set_min_announce_block_gap(100_000);
+}
+
+#[test]
 fn test_security_registry_admin_can_update_gap() {
     let (_, registry) = deploy_registry();
     let admin = IStealthRegistryAdminDispatcher { contract_address: registry.contract_address };
@@ -93,6 +107,32 @@ fn test_security_registry_admin_can_update_gap() {
 
     let gap = admin.get_min_announce_block_gap();
     assert(gap == 1000, 'Gap not updated');
+}
+
+#[test]
+#[should_panic(expected: 'STEALTH: invalid owner')]
+fn test_security_registry_transfer_to_zero_rejected() {
+    let (_, registry) = deploy_registry();
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry.contract_address };
+
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry.contract_address, owner);
+    admin.transfer_ownership(contract_address_const::<0x0>());
+}
+
+#[test]
+fn test_security_registry_cancel_transfer() {
+    let (_, registry) = deploy_registry();
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry.contract_address };
+
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry.contract_address, owner);
+
+    admin.transfer_ownership(bob());
+    assert(admin.get_pending_owner() == bob(), 'Pending owner not set');
+
+    admin.cancel_ownership_transfer();
+    assert(admin.get_pending_owner() == contract_address_const::<0x0>(), 'Pending not cleared');
 }
 
 #[test]
@@ -110,6 +150,30 @@ fn test_security_registry_rate_limit_enforced() {
 
     // Second announce should be rate-limited (gap too large)
     registry.announce(0, test_keys::TEST_EPHEMERAL_PUBKEY_X, test_keys::TEST_EPHEMERAL_PUBKEY_Y, stealth_addr, 42, 0);
+}
+
+#[test]
+fn test_security_registry_rate_limit_non_retroactive() {
+    let (_, registry) = deploy_registry();
+    let admin = IStealthRegistryAdminDispatcher { contract_address: registry.contract_address };
+
+    let owner = admin.get_owner();
+    start_cheat_caller_address(registry.contract_address, owner);
+
+    let stealth_addr = contract_address_const::<'stealth1'>();
+
+    start_cheat_block_number(registry.contract_address, 100);
+    admin.set_min_announce_block_gap(5);
+    registry.announce(0, test_keys::TEST_EPHEMERAL_PUBKEY_X, test_keys::TEST_EPHEMERAL_PUBKEY_Y, stealth_addr, 42, 0);
+
+    start_cheat_block_number(registry.contract_address, 200);
+    admin.set_min_announce_block_gap(1000);
+
+    start_cheat_block_number(registry.contract_address, 201);
+    registry.announce(0, test_keys::TEST_EPHEMERAL_PUBKEY_X, test_keys::TEST_EPHEMERAL_PUBKEY_Y, stealth_addr, 42, 0);
+
+    stop_cheat_block_number(registry.contract_address);
+    stop_cheat_caller_address(registry.contract_address);
 }
 
 // ============================================================================

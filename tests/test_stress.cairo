@@ -27,7 +27,8 @@ use starknet_stealth_addresses::crypto::view_tag::compute_view_tag;
 
 fn deploy_registry() -> IStealthRegistryDispatcher {
     let contract = declare("StealthRegistry").unwrap().contract_class();
-    let (address, _) = contract.deploy(@array![]).unwrap();
+    let owner = contract_address_const::<'registry_owner'>();
+    let (address, _) = contract.deploy(@array![owner.into()]).unwrap();
     IStealthRegistryDispatcher { contract_address: address }
 }
 

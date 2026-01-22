@@ -29,8 +29,14 @@ pub mod Errors {
     /// Caller not authorized
     pub const UNAUTHORIZED: felt252 = 'STEALTH: unauthorized';
 
+    /// Invalid owner address
+    pub const INVALID_OWNER: felt252 = 'STEALTH: invalid owner';
+
     /// Announce rate limited
     pub const RATE_LIMITED: felt252 = 'STEALTH: rate limited';
+
+    /// Min announce block gap too large
+    pub const MIN_GAP_TOO_LARGE: felt252 = 'STEALTH: min gap too large';
 
     /// Pending owner not set
     pub const NO_PENDING_OWNER: felt252 = 'STEALTH: no pending owner';
@@ -72,6 +78,9 @@ pub mod Errors {
     
     /// Address computation mismatch
     pub const ADDRESS_MISMATCH: felt252 = 'STEALTH: address mismatch';
+
+    /// Deployment count overflow
+    pub const DEPLOYMENT_COUNT_OVERFLOW: felt252 = 'STEALTH: deploy count overflow';
     
     // ========================================================================
     // Cryptographic Errors

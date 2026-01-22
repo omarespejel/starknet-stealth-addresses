@@ -13,7 +13,7 @@
 
 #[starknet::contract]
 pub mod StealthRegistry {
-    use starknet::{ContractAddress, get_caller_address, get_block_number, get_execution_info};
+    use starknet::{ContractAddress, get_caller_address, get_block_number};
     use starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, 
         StoragePathEntry, Map
@@ -31,8 +31,11 @@ pub mod StealthRegistry {
     // CONSTANTS
     // ========================================================================
 
-    /// Default minimum block gap between announcements (set to non-zero for production)
-    const DEFAULT_MIN_ANNOUNCE_BLOCK_GAP: u64 = 5;
+    /// Default minimum block gap between announcements (0 = disabled)
+    const DEFAULT_MIN_ANNOUNCE_BLOCK_GAP: u64 = 0;
+
+    /// Maximum allowed minimum block gap (caps admin rate limiting)
+    const MAX_MIN_ANNOUNCE_BLOCK_GAP: u64 = 7200;
 
     fn zero_address() -> ContractAddress {
         0.try_into().unwrap()
@@ -59,6 +62,9 @@ pub mod StealthRegistry {
         /// Minimum block gap between announcements per caller (0 = disabled)
         min_announce_block_gap: u64,
 
+        /// Block number when min_announce_block_gap was last updated
+        min_announce_block_gap_start: u64,
+
         /// Last block number an address announced from
         last_announce_block: Map<ContractAddress, u64>,
 
@@ -78,6 +84,7 @@ pub mod StealthRegistry {
         Announcement: Announcement,
         MinAnnounceBlockGapUpdated: MinAnnounceBlockGapUpdated,
         OwnershipTransferStarted: OwnershipTransferStarted,
+        OwnershipTransferCanceled: OwnershipTransferCanceled,
         OwnershipTransferred: OwnershipTransferred,
     }
 
@@ -149,6 +156,13 @@ pub mod StealthRegistry {
         pub new_owner: ContractAddress,
     }
 
+    /// Emitted when ownership transfer is canceled
+    #[derive(Drop, starknet::Event)]
+    pub struct OwnershipTransferCanceled {
+        pub previous_owner: ContractAddress,
+        pub canceled_owner: ContractAddress,
+    }
+
     /// Emitted when ownership transfer is completed
     #[derive(Drop, starknet::Event)]
     pub struct OwnershipTransferred {
@@ -161,14 +175,14 @@ pub mod StealthRegistry {
     // ========================================================================
 
     #[constructor]
-    fn constructor(ref self: ContractState) {
-        let exec_info = get_execution_info();
-        let tx_info = exec_info.unbox().tx_info.unbox();
-        self.owner.write(tx_info.account_contract_address);
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
+        assert(owner != zero_address(), Errors::INVALID_OWNER);
+        self.owner.write(owner);
         self.pending_owner.write(zero_address());
         self.version.write(1);
         self.announcement_count.write(0);
         self.min_announce_block_gap.write(DEFAULT_MIN_ANNOUNCE_BLOCK_GAP);
+        self.min_announce_block_gap_start.write(0);
     }
 
     // ========================================================================
@@ -327,8 +341,9 @@ pub mod StealthRegistry {
                 let caller = get_caller_address();
                 let last = self.last_announce_block.entry(caller).read();
                 let current_block = get_block_number();
+                let start_block = self.min_announce_block_gap_start.read();
 
-                if last != 0 {
+                if last != 0 && last >= start_block {
                     assert(current_block >= last + min_gap, Errors::RATE_LIMITED);
                 }
 
@@ -369,9 +384,11 @@ pub mod StealthRegistry {
             let caller = get_caller_address();
             let owner = self.owner.read();
             assert(caller == owner, Errors::UNAUTHORIZED);
+            assert(min_gap <= MAX_MIN_ANNOUNCE_BLOCK_GAP, Errors::MIN_GAP_TOO_LARGE);
 
             let old_gap = self.min_announce_block_gap.read();
             self.min_announce_block_gap.write(min_gap);
+            self.min_announce_block_gap_start.write(get_block_number());
 
             self.emit(MinAnnounceBlockGapUpdated {
                 old_gap,
@@ -399,12 +416,29 @@ pub mod StealthRegistry {
             let caller = get_caller_address();
             let owner = self.owner.read();
             assert(caller == owner, Errors::UNAUTHORIZED);
+            assert(new_owner != zero_address(), Errors::INVALID_OWNER);
 
             self.pending_owner.write(new_owner);
 
             self.emit(OwnershipTransferStarted {
                 previous_owner: owner,
                 new_owner,
+            });
+        }
+
+        /// Cancel a pending ownership transfer
+        fn cancel_ownership_transfer(ref self: ContractState) {
+            let caller = get_caller_address();
+            let owner = self.owner.read();
+            assert(caller == owner, Errors::UNAUTHORIZED);
+
+            let pending = self.pending_owner.read();
+            assert(pending != zero_address(), Errors::NO_PENDING_OWNER);
+            self.pending_owner.write(zero_address());
+
+            self.emit(OwnershipTransferCanceled {
+                previous_owner: owner,
+                canceled_owner: pending,
             });
         }
 

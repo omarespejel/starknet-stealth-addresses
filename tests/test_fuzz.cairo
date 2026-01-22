@@ -16,7 +16,7 @@ use starknet_stealth_addresses::interfaces::i_stealth_registry_admin::{
 use starknet_stealth_addresses::interfaces::i_stealth_account_factory::{
     IStealthAccountFactoryDispatcher, IStealthAccountFactoryDispatcherTrait
 };
-use starknet_stealth_addresses::crypto::constants::is_valid_public_key;
+use starknet_stealth_addresses::crypto::constants::{is_valid_public_key, AddressComputation};
 use starknet_stealth_addresses::crypto::view_tag::compute_view_tag;
 
 // ============================================================================
@@ -25,7 +25,8 @@ use starknet_stealth_addresses::crypto::view_tag::compute_view_tag;
 
 fn deploy_registry() -> IStealthRegistryDispatcher {
     let contract = declare("StealthRegistry").unwrap().contract_class();
-    let (address, _) = contract.deploy(@array![]).unwrap();
+    let owner = contract_address_const::<'registry_owner'>();
+    let (address, _) = contract.deploy(@array![owner.into()]).unwrap();
     IStealthRegistryDispatcher { contract_address: address }
 }
 
@@ -183,6 +184,16 @@ fn test_fuzz_factory_key_uniqueness(x1: felt252, y1: felt252, x2: felt252, y2: f
     let addr2 = factory.compute_stealth_address(x2, y2, salt);
     
     assert(addr1 != addr2, 'Same addr for diff keys');
+}
+
+/// Fuzz test: normalization wraps any out-of-range raw hash
+#[test]
+#[fuzzer(runs: 50, seed: 44445)]
+fn test_fuzz_factory_normalize_contract_address_hash(offset: u128) {
+    let raw = AddressComputation::CONTRACT_ADDRESS_BOUND + offset.into();
+    let normalized = AddressComputation::normalize_contract_address_hash(raw);
+    let expected: felt252 = offset.into();
+    assert(normalized == expected, 'Normalize mismatch');
 }
 
 // ============================================================================

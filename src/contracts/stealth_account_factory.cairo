@@ -19,6 +19,7 @@ pub mod StealthAccountFactory {
         storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Map}
     };
     use core::pedersen::pedersen;
+    use core::num::traits::ops::checked::CheckedAdd;
     use starknet_stealth_addresses::interfaces::i_stealth_account_factory::IStealthAccountFactory;
     use starknet_stealth_addresses::errors::Errors;
     use starknet_stealth_addresses::crypto::constants::{AddressComputation, is_valid_public_key};
@@ -47,7 +48,6 @@ pub mod StealthAccountFactory {
     #[derive(Drop, starknet::Event)]
     enum Event {
         StealthAccountDeployed: StealthAccountDeployed,
-        ClassHashUpdated: ClassHashUpdated,
     }
 
     /// Emitted when a new stealth account is deployed
@@ -55,16 +55,6 @@ pub mod StealthAccountFactory {
     struct StealthAccountDeployed {
         #[key]
         stealth_address: ContractAddress,
-        pubkey_x: felt252,
-        salt: felt252,
-        deployer: ContractAddress,
-    }
-
-    /// Emitted when the account class hash is updated
-    #[derive(Drop, starknet::Event)]
-    struct ClassHashUpdated {
-        old_class_hash: ClassHash,
-        new_class_hash: ClassHash,
     }
 
     // ========================================================================
@@ -114,16 +104,12 @@ pub mod StealthAccountFactory {
             
             // Update state
             let count = self.deployment_count.read();
-            self.deployment_count.write(count + 1);
+            let next_count = count.checked_add(1).expect(Errors::DEPLOYMENT_COUNT_OVERFLOW);
+            self.deployment_count.write(next_count);
             self.deployed_accounts.entry(deployed_address).write(true);
             
             // Emit event
-            self.emit(StealthAccountDeployed {
-                stealth_address: deployed_address,
-                pubkey_x: stealth_pubkey_x,
-                salt,
-                deployer: starknet::get_caller_address(),
-            });
+            self.emit(StealthAccountDeployed { stealth_address: deployed_address });
             
             deployed_address
         }
@@ -158,9 +144,12 @@ pub mod StealthAccountFactory {
             let a3 = pedersen(a2, class_hash.into());
             let a4 = pedersen(a3, constructor_calldata_hash);
             let final_hash = pedersen(a4, 5);  // 5 = number of elements
-            
+
+            // Normalize into contract address domain
+            let normalized = AddressComputation::normalize_contract_address_hash(final_hash);
+
             // Convert to address
-            final_hash.try_into().expect(Errors::ADDRESS_MISMATCH)
+            normalized.try_into().expect(Errors::ADDRESS_MISMATCH)
         }
 
         /// Get the account class hash

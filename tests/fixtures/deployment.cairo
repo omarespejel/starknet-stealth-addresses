@@ -18,7 +18,8 @@ use starknet_stealth_addresses::interfaces::i_stealth_account::{
 /// Deploy the StealthRegistry contract
 pub fn deploy_registry() -> (ContractAddress, IStealthRegistryDispatcher) {
     let contract = declare("StealthRegistry").unwrap().contract_class();
-    let (address, _) = contract.deploy(@array![]).unwrap();
+    let owner = registry_owner();
+    let (address, _) = contract.deploy(@array![owner.into()]).unwrap();
     let dispatcher = IStealthRegistryDispatcher { contract_address: address };
     (address, dispatcher)
 }
@@ -85,4 +86,8 @@ pub fn charlie() -> ContractAddress {
 
 pub fn attacker() -> ContractAddress {
     contract_address_const::<'attacker'>()
+}
+
+pub fn registry_owner() -> ContractAddress {
+    contract_address_const::<'registry_owner'>()
 }

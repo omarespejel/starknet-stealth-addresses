@@ -4,6 +4,7 @@ use starknet_stealth_addresses::interfaces::i_stealth_account_factory::IStealthA
 use starknet_stealth_addresses::interfaces::i_stealth_account::{
     IStealthAccountDispatcher, IStealthAccountDispatcherTrait
 };
+use starknet_stealth_addresses::crypto::constants::AddressComputation;
 
 use super::fixtures::{deploy_factory, test_keys};
 
@@ -98,6 +99,31 @@ fn test_unit_factory_get_class_hash() {
     
     let stored_class_hash = factory.get_account_class_hash();
     assert(stored_class_hash == expected_class_hash, 'Class hash mismatch');
+}
+
+#[test]
+fn test_unit_factory_normalize_contract_address_hash() {
+    let raw = AddressComputation::CONTRACT_ADDRESS_BOUND + 1;
+    let normalized = AddressComputation::normalize_contract_address_hash(raw);
+    assert(normalized == 1, 'Normalize wrap');
+}
+
+#[test]
+fn test_unit_factory_normalize_contract_address_boundaries() {
+    let bound = AddressComputation::CONTRACT_ADDRESS_BOUND;
+    let last = bound - 1;
+    let normalized_bound = AddressComputation::normalize_contract_address_hash(bound);
+    let normalized_last = AddressComputation::normalize_contract_address_hash(last);
+    assert(normalized_bound == 0, 'Normalize bound');
+    assert(normalized_last == last, 'Normalize last');
+}
+
+#[test]
+fn test_unit_factory_normalize_contract_address_idempotent() {
+    let raw = AddressComputation::CONTRACT_ADDRESS_BOUND + 123;
+    let normalized_once = AddressComputation::normalize_contract_address_hash(raw);
+    let normalized_twice = AddressComputation::normalize_contract_address_hash(normalized_once);
+    assert(normalized_once == normalized_twice, 'Normalize idempotent');
 }
 
 // ============================================================================
