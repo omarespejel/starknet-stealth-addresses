@@ -1,23 +1,83 @@
 {
   "network": "sepolia",
-  "timestamp": "2026-01-20T00:00:00Z",
-  "version": "v2 - fixed compute_stealth_address",
+  "timestamp": "2026-01-22T02:33:32.180Z",
   "classHashes": {
-    "StealthRegistry": "0x2163854818379b95aa0ee82f27c39e5d77b24a25bd12d2aecba7f1837f33902",
-    "StealthAccount": "0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd",
-    "StealthAccountFactory": "0x2b5ad5d8193fdce23d21fbfe56c303d5482a35ecbc3b89444bad4ac08a55e71"
+    "StealthRegistry": "0x2473405af31dff998ad51a56188297d4717c88c77177ebd3df534777991a4c8",
+    "StealthAccount": "0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427",
+    "StealthAccountFactory": "0x45949dc86cd0f2a965a4f06e37a2a0da5f89d619c6ed32748cbde59d56b06be"
   },
   "contracts": {
-    "StealthRegistry": "0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c",
-    "StealthAccountFactory": "0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb"
-  },
-  "explorerLinks": {
-    "registry": "https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c",
-    "factory": "https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb"
+    "StealthRegistry": "0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0",
+    "StealthAccountFactory": "0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085"
   },
   "transactions": {
-    "factoryDeclare": "0x00e8a9eb26ca075791f08913ba80400d51958a37250379a431efeb73bec31c87",
-    "factoryDeploy": "0x050052209e584d4e8b69639f1ddcdfc8b9b2716b6114bc44db94d863b6c832fa",
-    "registryDeploy": "0x044f565f518f917626c98cbc4254a7d69ed26a2ea0609e66b5a50a2a135f0cd3"
+    "registryDeclare": {
+      "hash": "0x6e3257ec5e38d4ada384b12da7bc16cc256fa106d1e8de8a98e016a9f827abf",
+      "costs": {
+        "actualFee": {
+          "amount": "0x3170dc27760f29c0",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 192,
+          "l1_gas": 0,
+          "l2_gas": 439818880
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "factoryDeclare": {
+      "hash": "0x6b8f8d5cc656db46365ff30de503a630cc586619b1113c362658a3dc4e558cb",
+      "costs": {
+        "actualFee": {
+          "amount": "0xc78c759c1269b40",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 192,
+          "l1_gas": 0,
+          "l2_gas": 110942080
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "registryDeploy": {
+      "hash": "0x48d549449ac2c212ef034ec60c2068a757311a0820b8ae612181329818e128d",
+      "costs": {
+        "actualFee": {
+          "amount": "0x2573872f07ed40",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 416,
+          "l1_gas": 0,
+          "l2_gas": 1302400
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "factoryDeploy": {
+      "hash": "0x11345bcaec230a9270a835ac98686f2ba6f616e04db423416e9eb58f6731ee7",
+      "costs": {
+        "actualFee": {
+          "amount": "0x24a9bb90d47640",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 320,
+          "l1_gas": 0,
+          "l2_gas": 1262400
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    }
   }
 }

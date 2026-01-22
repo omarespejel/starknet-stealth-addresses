@@ -1,0 +1,62 @@
+{
+  "network": "mainnet",
+  "timestamp": "2026-01-22T02:36:37.366Z",
+  "source": "../../deployments/sepolia_costs.json",
+  "rpcUrl": "https://api.zan.top/public/starknet-mainnet",
+  "gasPrices": {
+    "l1GasPriceFri": "39078490927038",
+    "l1DataGasPriceFri": "10871223228",
+    "l2GasPriceFri": "8000000000",
+    "sources": {
+      "l1": "price_in_fri",
+      "l1Data": "price_in_fri",
+      "l2": "price_in_fri"
+    }
+  },
+  "estimates": [
+    {
+      "step": "registerMeta",
+      "l2Gas": "1302400",
+      "l1Gas": "0",
+      "l1DataGas": "672",
+      "feeFri": "10426505462009216",
+      "feeStrk": "0.010426505462009216"
+    },
+    {
+      "step": "deployStealth",
+      "l2Gas": "1452160",
+      "l1Gas": "0",
+      "l1DataGas": "864",
+      "feeFri": "11626672736868992",
+      "feeStrk": "0.011626672736868992"
+    },
+    {
+      "step": "announce",
+      "l2Gas": "1117760",
+      "l1Gas": "0",
+      "l1DataGas": "288",
+      "feeFri": "8945210912289664",
+      "feeStrk": "0.008945210912289664"
+    },
+    {
+      "step": "fund",
+      "l2Gas": "1116800",
+      "l1Gas": "0",
+      "l1DataGas": "224",
+      "feeFri": "8936835154003072",
+      "feeStrk": "0.008936835154003072"
+    },
+    {
+      "step": "spend",
+      "l2Gas": "971955",
+      "l1Gas": "0",
+      "l1DataGas": "192",
+      "feeFri": "7777727274859776",
+      "feeStrk": "0.007777727274859776"
+    }
+  ],
+  "total": {
+    "feeFri": "47712951540030720",
+    "feeStrk": "0.04771295154003072"
+  }
+}

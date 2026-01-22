@@ -1,0 +1,95 @@
+{
+  "network": "sepolia",
+  "timestamp": "2026-01-22T02:36:26.714Z",
+  "account": "0x31fb01710b2e341035b50ac8c1f299957364f67867538f633a54e28dbbacd12",
+  "registryAddress": "0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0",
+  "factoryAddress": "0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085",
+  "stealthAddress": "0x71803f2b86e21a8fc533ea2ae060c5db4e42bc1a3818b3221bc47a4e56c376f",
+  "transactions": {
+    "registerMeta": {
+      "hash": "0x4369df0e44f5ae6c54c3ea02a354f4f0fa0c598927ba19a80627e92cfb05b2e",
+      "costs": {
+        "actualFee": {
+          "amount": "0x262eb797494a80",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 672,
+          "l1_gas": 0,
+          "l2_gas": 1302400
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "deployStealth": {
+      "hash": "0x64ff72456d2e41d3634765f37d5319874a8fc54868f0834ac30267d119a7595",
+      "costs": {
+        "actualFee": {
+          "amount": "0x2ab1593788b7e0",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 864,
+          "l1_gas": 0,
+          "l2_gas": 1452160
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "announce": {
+      "hash": "0x76c476c1233d219ed586de96109a65a5f470d51ed0f5a52d1b42537dabe0f88",
+      "costs": {
+        "actualFee": {
+          "amount": "0x2011e9a0d91340",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 288,
+          "l1_gas": 0,
+          "l2_gas": 1117760
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "fund": {
+      "hash": "0x264f38f887ea924417653fa46b27420d98551871112701a24a6aa12e4a4ab7a",
+      "costs": {
+        "actualFee": {
+          "amount": "0x205f4af74b0ba0",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 224,
+          "l1_gas": 0,
+          "l2_gas": 1116800
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    },
+    "spend": {
+      "hash": "0x5cd1be542cbbe214c227469ea577bb206993a9aca85214e1a55403fcb3e7c5f",
+      "costs": {
+        "actualFee": {
+          "amount": "0x1bd343e352ff40",
+          "unit": "FRI"
+        },
+        "executionResources": {
+          "l1_data_gas": 192,
+          "l1_gas": 0,
+          "l2_gas": 971955
+        },
+        "l1Gas": null,
+        "l1DataGas": null,
+        "l2Gas": null
+      }
+    }
+  }
+}
