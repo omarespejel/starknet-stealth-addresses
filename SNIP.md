@@ -636,7 +636,8 @@ A complete reference implementation is available, including Cairo smart contract
 |-----------|----------|-------------|
 | Cairo Contracts | `src/contracts/` | Registry, Factory, Account |
 | TypeScript SDK | `sdk/` | ECDH, scanning, address generation |
-| Test Suite | `tests/` | 96 comprehensive tests |
+| Cairo Test Suite | `tests/` | 96 comprehensive tests |
+| SDK Tests | `sdk/tests/` | 17 unit tests (vitest) |
 | Interactive Demo | `demo/index.html` | Browser-based demo |
 
 ### TypeScript SDK
@@ -667,6 +668,8 @@ The SDK provides:
 | Gas benchmarks | Performance baselines |
 | Stress tests | High-load scenarios (50+ users, 100+ ops) |
 
+SDK tests are run with `cd sdk && npm test` (17 tests).
+
 Run test categories:
 ```bash
 snforge test --filter "unit_"      # Unit tests
@@ -688,7 +691,7 @@ Key invariants tested:
 | SNIP specification | Complete |
 | Cairo contracts | Complete |
 | TypeScript SDK | Complete |
-| Test suite (96 tests) | Complete |
+| Test suite (96 Cairo tests + 17 SDK tests) | Complete |
 | Fuzz testing | Complete |
 | Stress testing | Complete |
 | Sepolia deployment | Complete |
