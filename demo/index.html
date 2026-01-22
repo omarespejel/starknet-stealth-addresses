@@ -219,6 +219,79 @@
     .status.success { background: #1a3a1a; color: #4ade80; }
     .status.error { background: #3a1a1a; color: #f87171; }
 
+    .network-warning {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: #f87171;
+    }
+
+    .info-panel {
+      background: #0f0f0f;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .info-panel h3 {
+      font-size: 0.85rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .info-panel ul {
+      margin-left: 1rem;
+      font-size: 0.8rem;
+      color: #bbb;
+    }
+
+    .info-panel li + li {
+      margin-top: 0.35rem;
+    }
+
+    .costs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .costs-card {
+      background: #0b0b0b;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .costs-title {
+      font-size: 0.85rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .costs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    .costs-table th,
+    .costs-table td {
+      padding: 0.35rem 0;
+      border-bottom: 1px solid #1a1a1a;
+      text-align: left;
+    }
+
+    .costs-table th {
+      color: #666;
+      font-weight: 400;
+    }
+
+    .costs-total {
+      color: #4ade80;
+      font-weight: 500;
+    }
+
     .spinner {
       width: 14px;
       height: 14px;
@@ -348,9 +421,11 @@
   <div class="container">
     <header>
       <h1>STARKNET STEALTH ADDRESSES</h1>
-      <p class="subtitle">Privacy-preserving payments - Live Demo</p>
+      <p class="subtitle">Stealth address demo: recipient unlinkability (amounts remain public)</p>
+      <p class="subtitle">Create stealth addresses and complete the full flow for under 1 cent (est.). 0.0477 STRK ≈ 0.0038 USDC at 0.08 USDC/STRK.</p>
       <p class="subtitle">Comments: Telegram @espejelomar, X @omarespejel, GitHub @omarespejel, omar@starknet.org</p>
-      <span class="network-badge">Sepolia Testnet</span>
+      <span id="network-badge" class="network-badge">Sepolia Testnet</span>
+      <div id="network-warning" class="network-warning" style="display: none;"></div>
     </header>
 
     <!-- Wallet Connection -->
@@ -366,6 +441,7 @@
 
     <div style="margin-bottom: 0.5rem;">
       <button id="debug-toggle" class="link-button" onclick="toggleDebugPanel()">Show Wallet Debug</button>
+      <button class="link-button" onclick="resetDemo()" style="margin-left: 0.75rem;">Reset Demo</button>
     </div>
 
     <!-- Debug Panel -->
@@ -373,6 +449,24 @@
       <div style="color: #888; margin-bottom: 0.5rem;">Wallet Detection Debug:</div>
       <div id="debug-output" style="color: #4ade80; font-family: monospace;"></div>
       <button onclick="detectWallets()" style="margin-top: 0.5rem; font-size: 0.7rem;">Re-detect Wallets</button>
+    </div>
+
+    <div class="info-panel">
+      <h3>How it works (TL;DR)</h3>
+      <ul>
+        <li>Recipient registers a meta-address (public keys) on-chain once.</li>
+        <li>Sender derives a unique stealth address with ECDH and announces it.</li>
+        <li>Recipient scans announcements, derives a one-time spend key, and spends.</li>
+      </ul>
+    </div>
+
+    <div class="info-panel">
+      <h3>Privacy Notes</h3>
+      <ul>
+        <li>Announcements are permissionless and can be spammed.</li>
+        <li>View tags speed up scanning but don’t hide sender addresses.</li>
+        <li>Amounts remain visible without a privacy layer (e.g., Tongo).</li>
+      </ul>
     </div>
 
     <div class="tabs">
@@ -589,6 +683,11 @@
           <div class="input-label">Your Spending Private Key</div>
           <input type="password" id="scan-private-key" placeholder="0x...">
         </div>
+
+        <div class="input-group">
+          <div class="input-label">From Block (optional, reduces scan time)</div>
+          <input type="text" id="scan-from-block" placeholder="e.g. 5621500">
+        </div>
         
         <button class="btn-primary" onclick="scanAnnouncements()">Scan Announcements</button>
         
@@ -637,6 +736,101 @@
     </div>
 
     <!-- Contract Info -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number">+</div>
+        <div class="step-title">Cost Estimates</div>
+      </div>
+      <p class="step-desc">
+        Based on Sepolia measurements (2026-01-22) and mainnet gas prices at time of estimate.
+        USDC estimates assume 0.08 USDC/STRK. Fees vary with network conditions.
+      </p>
+      <div class="costs-grid">
+        <div class="costs-card">
+          <div class="costs-title">Sepolia Actual (STRK)</div>
+          <table class="costs-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Fee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a class="tx-link" href="https://sepolia.starkscan.co/tx/0x4369df0e44f5ae6c54c3ea02a354f4f0fa0c598927ba19a80627e92cfb05b2e" target="_blank">Register</a></td>
+                <td>0.010747</td>
+              </tr>
+              <tr>
+                <td><a class="tx-link" href="https://sepolia.starkscan.co/tx/0x64ff72456d2e41d3634765f37d5319874a8fc54868f0834ac30267d119a7595" target="_blank">Deploy</a></td>
+                <td>0.012017</td>
+              </tr>
+              <tr>
+                <td><a class="tx-link" href="https://sepolia.starkscan.co/tx/0x76c476c1233d219ed586de96109a65a5f470d51ed0f5a52d1b42537dabe0f88" target="_blank">Announce</a></td>
+                <td>0.009027</td>
+              </tr>
+              <tr>
+                <td><a class="tx-link" href="https://sepolia.starkscan.co/tx/0x264f38f887ea924417653fa46b27420d98551871112701a24a6aa12e4a4ab7a" target="_blank">Fund</a></td>
+                <td>0.009112</td>
+              </tr>
+              <tr>
+                <td><a class="tx-link" href="https://sepolia.starkscan.co/tx/0x5cd1be542cbbe214c227469ea577bb206993a9aca85214e1a55403fcb3e7c5f" target="_blank">Spend</a></td>
+                <td>0.007832</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="costs-card">
+          <div class="costs-title">Mainnet Estimate (STRK)</div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+          <div style="font-size: 0.75rem; color: #bbb;">STRK price (USDC):</div>
+          <input type="text" id="mainnet-strk-price" value="0.08" style="width: 80px;" oninput="renderMainnetUsd()">
+          <div id="mainnet-usd-note" style="font-size: 0.7rem; color: #777;">Edit to current price</div>
+          </div>
+          <table class="costs-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Fee (STRK)</th>
+                <th>USDC (est.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Register</td>
+                <td>0.010427</td>
+                <td class="costs-usd" data-mainnet-strk="0.010427">—</td>
+              </tr>
+              <tr>
+                <td>Deploy</td>
+                <td>0.011627</td>
+                <td class="costs-usd" data-mainnet-strk="0.011627">—</td>
+              </tr>
+              <tr>
+                <td>Announce</td>
+                <td>0.008945</td>
+                <td class="costs-usd" data-mainnet-strk="0.008945">—</td>
+              </tr>
+              <tr>
+                <td>Fund</td>
+                <td>0.008937</td>
+                <td class="costs-usd" data-mainnet-strk="0.008937">—</td>
+              </tr>
+              <tr>
+                <td>Spend</td>
+                <td>0.007778</td>
+                <td class="costs-usd" data-mainnet-strk="0.007778">—</td>
+              </tr>
+              <tr>
+                <td class="costs-total">Total</td>
+                <td class="costs-total">0.047713</td>
+                <td class="costs-total costs-usd" data-mainnet-strk="0.047713">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="contracts-info">
       <div class="contract-item">
         <h4>StealthRegistry</h4>
@@ -820,6 +1014,34 @@
       return fracStr ? `${whole}.${fracStr}` : `${whole}`;
     }
 
+    function formatUsd(amount) {
+      if (!Number.isFinite(amount)) return '—';
+      const decimals = amount < 0.01 ? 4 : 2;
+      return `${amount.toFixed(decimals)} USDC`;
+    }
+
+    function renderMainnetUsd() {
+      const input = document.getElementById('mainnet-strk-price');
+      const note = document.getElementById('mainnet-usd-note');
+      const price = input ? Number(input.value) : NaN;
+      const isValid = Number.isFinite(price) && price > 0;
+
+      if (note) {
+        note.textContent = isValid
+          ? `Assuming ${price.toFixed(2)} USDC/STRK`
+          : 'Enter STRK price to estimate USDC';
+      }
+
+      document.querySelectorAll('[data-mainnet-strk]').forEach((cell) => {
+        const strkValue = Number(cell.getAttribute('data-mainnet-strk'));
+        if (!isValid || !Number.isFinite(strkValue)) {
+          cell.textContent = '—';
+          return;
+        }
+        cell.textContent = formatUsd(strkValue * price);
+      });
+    }
+
     function setClaimInputs(match) {
       const addrInput = document.getElementById('claim-stealth-address');
       const keyInput = document.getElementById('claim-stealth-key');
@@ -937,6 +1159,20 @@
     }
 
     async function getScanRange() {
+      const manualInput = document.getElementById('scan-from-block');
+      const manualValue = manualInput ? manualInput.value.trim() : '';
+      if (manualValue) {
+        const parsed = Number(manualValue);
+        if (!Number.isNaN(parsed) && parsed >= 0) {
+          return {
+            fromBlock: Math.floor(parsed),
+            toBlock: 'latest',
+            latest: null,
+            source: 'manual'
+          };
+        }
+      }
+
       let latest = null;
       try {
         latest = await rpcRequest('starknet_blockNumber', []);
@@ -1016,14 +1252,131 @@
       return events;
     }
 
+    async function updateNetworkStatus() {
+      const badge = document.getElementById('network-badge');
+      const warning = document.getElementById('network-warning');
+      if (!badge || !warning) return;
+      try {
+        const chainId = await rpcRequest('starknet_chainId', []);
+        const isSepolia = chainId === '0x534e5f5345504f4c4941';
+        badge.textContent = isSepolia ? 'Sepolia Testnet' : `Chain: ${chainId}`;
+        warning.style.display = isSepolia ? 'none' : 'block';
+        warning.textContent = isSepolia
+          ? ''
+          : 'Warning: RPC is not Sepolia. Demo contract addresses may be invalid.';
+      } catch (err) {
+        warning.style.display = 'block';
+        warning.textContent = 'Warning: Failed to detect network from RPC.';
+      }
+    }
+
+    function resetDemo() {
+      stealthData = null;
+      lastMatches = [];
+      lastDeployTxHash = null;
+      lastAnnounceTxHash = null;
+      lastAnnounceCall = null;
+
+      const idsToClear = [
+        'lookup-address',
+        'recipient-key-x',
+        'recipient-key-y',
+        'fund-stealth-address',
+        'scan-private-key',
+        'scan-from-block',
+        'register-key-x',
+        'register-key-y',
+      ];
+      idsToClear.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+
+      const fundAmount = document.getElementById('fund-amount');
+      if (fundAmount) fundAmount.value = '0.1';
+
+      const deployBtn = document.getElementById('deploy-btn');
+      if (deployBtn) {
+        deployBtn.disabled = true;
+        deployBtn.textContent = 'Deploy & Announce';
+      }
+      const registerBtn = document.getElementById('register-btn');
+      if (registerBtn) registerBtn.textContent = 'Register On-Chain';
+      const updateBtn = document.getElementById('update-btn');
+      if (updateBtn) updateBtn.textContent = 'Update On-Chain';
+      const fundBtn = document.getElementById('fund-btn');
+      if (fundBtn) fundBtn.textContent = 'Send STRK to Stealth Address';
+
+      const step4 = document.getElementById('step-4');
+      if (step4) step4.style.display = 'none';
+
+      const outputs = [
+        'lookup-output',
+        'stealth-output',
+        'deploy-output',
+        'fund-output',
+        'register-output',
+        'recipient-keys-output',
+        'claim-output',
+      ];
+      outputs.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.style.display = 'none';
+          el.innerHTML = '';
+        }
+      });
+
+      const scanStatus = document.getElementById('scan-status');
+      if (scanStatus) scanStatus.style.display = 'none';
+
+      const scanResults = document.getElementById('scan-results');
+      if (scanResults) {
+        scanResults.innerHTML = '<div style="color: #666;">No scan performed yet. Enter your private key and click Scan.</div>';
+      }
+    }
+
     async function waitForTx(txHash) {
       const p = getProvider();
       if (p && typeof p.waitForTransaction === 'function') {
-        return p.waitForTransaction(txHash);
+        try {
+          const result = await Promise.race([
+            p.waitForTransaction(txHash),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('waitForTransaction timeout')), 20000))
+          ]);
+          return result;
+        } catch (err) {
+          console.warn('[tx] waitForTransaction failed, falling back to RPC:', err.message);
+        }
       }
-      // Fallback: wait a short time and let the user check the explorer
-      console.warn('[tx] waitForTransaction not available, skipping wait');
-      await new Promise((r) => setTimeout(r, 6000));
+      return waitForTxReceipt(txHash);
+    }
+
+    async function waitForTxReceipt(txHash) {
+      const maxAttempts = 20;
+      const delayMs = 2000;
+      for (let i = 0; i < maxAttempts; i += 1) {
+        try {
+          const receipt = await rpcRequest('starknet_getTransactionReceipt', [txHash]);
+          const status = receipt?.finality_status || receipt?.status;
+          const exec = receipt?.execution_status;
+          if (status === 'ACCEPTED_ON_L2' || status === 'ACCEPTED_ON_L1') {
+            if (exec && exec !== 'SUCCEEDED') {
+              throw new Error(`Transaction ${exec.toLowerCase()}`);
+            }
+            return receipt;
+          }
+          if (status === 'REJECTED') {
+            throw new Error('Transaction rejected');
+          }
+        } catch (err) {
+          if (i === maxAttempts - 1) {
+            throw err;
+          }
+        }
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+      throw new Error('Transaction confirmation timed out');
     }
 
     async function waitForTxOn(providerInstance, txHash) {
@@ -1851,8 +2204,15 @@
             <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
           </div>
           <div class="divider"></div>
-          <div class="info-box">
+          <div class="info-box" style="background: #1a2a1a; border-color: #1e5f1e; color: #a5fca5;">
+            <strong>Recipient setup complete!</strong>
+            <br><br>
             Your meta-address is now public. Share your Starknet address with senders so they can look up your meta-address.
+          </div>
+          <div class="next-steps">
+            <div style="margin-top: 0.6rem;">
+              <button class="btn-primary" onclick="selectTab('send')">Go to Send (as sender)</button>
+            </div>
           </div>
         `;
 
@@ -1928,8 +2288,15 @@
             <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
           </div>
           <div class="divider"></div>
-          <div class="info-box">
+          <div class="info-box" style="background: #1a2a1a; border-color: #1e5f1e; color: #a5fca5;">
+            <strong>Recipient setup complete!</strong>
+            <br><br>
             Your meta-address has been updated. Share your Starknet address with senders so they can look it up.
+          </div>
+          <div class="next-steps">
+            <div style="margin-top: 0.6rem;">
+              <button class="btn-primary" onclick="selectTab('send')">Go to Send (as sender)</button>
+            </div>
           </div>
         `;
 
@@ -2114,19 +2481,35 @@
 
         const sn = await getStarknetModule();
         
-        // Use public RPC endpoint (users can configure their own)
-        const rpcUrl = 'https://api.zan.top/public/starknet-sepolia';
-        const provider = new sn.RpcProvider({ 
-          nodeUrl: rpcUrl
-        });
-        
-        // Create account
-        const accountFromKey = new sn.Account(
-          provider,
-          normalizeAddress(stealthAddress),
-          stealthKey,
-          '1'  // Cairo version 1
-        );
+        // Use the configured RPC endpoint for fee estimation + execution
+        const rpcUrl = CONFIG.rpcUrl;
+        const provider = new sn.RpcProvider({ nodeUrl: rpcUrl });
+
+        // Create account (support both v6 and v9 constructor styles)
+        // IMPORTANT: Always use V3 transactions - V1 is deprecated on Starknet
+        let accountFromKey = null;
+        try {
+          // starknet.js v6+ object-style constructor
+          accountFromKey = new sn.Account({
+            provider,
+            address: normalizeAddress(stealthAddress),
+            signer: stealthKey,
+            cairoVersion: '1',
+            transactionVersion: sn.ETransactionVersion ? sn.ETransactionVersion.V3 : '0x3',
+          });
+        } catch (err) {
+          // starknet.js v5 positional constructor - create then set version
+          accountFromKey = new sn.Account(
+            provider,
+            normalizeAddress(stealthAddress),
+            stealthKey,
+            '1'  // Cairo version 1
+          );
+          // Force V3 transaction version on older starknet.js
+          if (sn.ETransactionVersion) {
+            accountFromKey.transactionVersion = sn.ETransactionVersion.V3;
+          }
+        }
 
         const amount = parseAmountToUint256(amountStr);
         const transferCall = {
@@ -2143,9 +2526,110 @@
         console.log('[transfer] From:', stealthAddress);
         console.log('[transfer] To:', recipient);
         console.log('[transfer] Amount:', amountStr, 'STRK');
+        console.log('[transfer] Stealth private key (first 10 chars):', stealthKey.substring(0, 10) + '...');
+        
+        // Debug: compute public key from private key to verify it matches account
+        try {
+          const pubKey = sn.ec.starkCurve.getStarkKey(stealthKey);
+          console.log('[transfer] Computed public key from private key:', pubKey);
+          
+          // Try to read the account's stored public key
+          const storedPubKey = await rpcCall(stealthAddress, 'get_public_key', []);
+          console.log('[transfer] Account stored public key:', storedPubKey);
+          
+          if (storedPubKey && storedPubKey[0]) {
+            const storedHex = toHex(BigInt(storedPubKey[0]));
+            const computedHex = toHex(BigInt(pubKey));
+            console.log('[transfer] Keys match?', storedHex === computedHex);
+            if (storedHex !== computedHex) {
+              console.error('[transfer] KEY MISMATCH! Stored:', storedHex, 'Computed:', computedHex);
+            }
+          }
+        } catch (e) {
+          console.warn('[transfer] Could not verify key:', e.message);
+        }
 
-        // Execute transaction
-        const tx = await accountFromKey.execute([transferCall]);
+        // Pre-fetch nonce using latest block (some RPCs reject "pending")
+        let nonceHex = null;
+        try {
+          const nonce = await rpcRequest('starknet_getNonce', ['latest', normalizeAddress(stealthAddress)]);
+          nonceHex = toHex(BigInt(nonce));
+        } catch (err) {
+          console.warn('[transfer] Failed to fetch nonce via RPC:', err.message);
+          try {
+            const nonce = await provider.getNonceForAddress(normalizeAddress(stealthAddress), 'latest');
+            nonceHex = toHex(BigInt(nonce));
+          } catch (err2) {
+            console.warn('[transfer] Failed to fetch nonce via provider:', err2.message);
+          }
+        }
+
+        // Estimate fees using the account (more reliable than provider method)
+        let resourceBounds = null;
+        try {
+          console.log('[transfer] Estimating fees...');
+          const estimate = await accountFromKey.estimateInvokeFee([transferCall], {
+            skipValidate: true
+          });
+          console.log('[transfer] Fee estimate result:', estimate);
+          
+          // Extract resource bounds from estimate (starknet.js v6+)
+          if (estimate && estimate.resourceBounds) {
+            resourceBounds = estimate.resourceBounds;
+            console.log('[transfer] Using estimated resourceBounds:', resourceBounds);
+          } else if (estimate && estimate.gas_consumed !== undefined) {
+            // Fallback: construct from gas_consumed if resourceBounds not present
+            const gasConsumed = BigInt(estimate.gas_consumed || estimate.overall_fee || 0);
+            const gasPrice = BigInt(estimate.gas_price || estimate.unit_price || 10n ** 11n);
+            console.log('[transfer] Constructing resourceBounds from gas estimate:', { gasConsumed, gasPrice });
+          }
+        } catch (err) {
+          console.warn('[transfer] Fee estimate failed:', err.message);
+        }
+
+        // Execute transaction (pass resourceBounds to avoid internal estimate)
+        // IMPORTANT: Always use V3 transactions - V1 is deprecated on Starknet
+        const txDetails = {};
+        if (nonceHex) txDetails.nonce = nonceHex;
+        
+        // Always use V3 transaction format
+        txDetails.version = sn.ETransactionVersion ? sn.ETransactionVersion.V3 : '0x3';
+        txDetails.tip = '0x0';
+        txDetails.paymasterData = [];
+        txDetails.accountDeploymentData = [];
+        txDetails.nonceDataAvailabilityMode = 'L1';
+        txDetails.feeDataAvailabilityMode = 'L1';
+        
+        if (resourceBounds) {
+          // Ensure l1_data_gas is present (required by Starknet 0.13.2+)
+          if (!resourceBounds.l1_data_gas) {
+            resourceBounds.l1_data_gas = { max_amount: '0x100', max_price_per_unit: toHex(2n * 10n ** 12n) };
+          }
+          txDetails.resourceBounds = resourceBounds;
+        } else {
+          // Fallback: construct V3-compatible resourceBounds when fee estimation fails
+          // Using very generous buffers - account should have sufficient balance
+          // Max cost estimate: ~0.5 STRK (safe for accounts with 1+ STRK)
+          console.log('[transfer] Using fallback resourceBounds (fee estimation failed)');
+          txDetails.resourceBounds = {
+            l1_gas: {
+              max_amount: toHex(10000n),
+              max_price_per_unit: toHex(500n * 10n ** 12n) // 500 trillion wei
+            },
+            l2_gas: {
+              max_amount: toHex(2000000n), // 2M units
+              max_price_per_unit: toHex(200n * 10n ** 9n) // 200 gwei
+              // Max L2 cost: 2M * 200 gwei = 0.4 STRK
+            },
+            l1_data_gas: {
+              max_amount: toHex(1000n), // 1000 units
+              max_price_per_unit: toHex(100n * 10n ** 12n) // 100 trillion wei
+              // Max L1Data cost: 1000 * 100T = 0.1 STRK
+            }
+          };
+        }
+
+        const tx = await accountFromKey.execute([transferCall], txDetails);
         output.innerHTML = `
           <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
           <div class="output-row" style="margin-top: 0.5rem;">
@@ -2171,7 +2655,22 @@
         let helpText = '';
         
         // Parse common errors
-        if (errorMsg.includes('Cannot convert undefined to a BigInt') || errorMsg.includes('parseFeeEstimate')) {
+        if (errorMsg.includes('version is not supported') || errorMsg.includes('transaction version')) {
+          helpText = `
+            <div class="info-box" style="margin-top: 0.5rem;">
+              <strong>Transaction version error:</strong> The transaction was rejected because of version incompatibility.
+              This usually means V1 transactions are deprecated. Please refresh the page and try again.
+              If the error persists, check that starknet.js is properly loaded.
+            </div>
+          `;
+        } else if (errorMsg.includes('Invalid block id') || errorMsg.includes('getNonce') || errorMsg.includes('estimateFee')) {
+          helpText = `
+            <div class="info-box" style="margin-top: 0.5rem;">
+              <strong>RPC note:</strong> Your RPC does not accept "pending" for fee estimation or nonce.
+              The demo now estimates on "latest" and falls back to default resource bounds. Please retry.
+            </div>
+          `;
+        } else if (errorMsg.includes('Cannot convert undefined to a BigInt') || errorMsg.includes('parseFeeEstimate')) {
           helpText = `
             <div class="info-box" style="margin-top: 0.5rem;">
               <strong>Possible causes:</strong>
@@ -2179,6 +2678,16 @@
                 <li>The stealth account may not have enough STRK for gas fees</li>
                 <li>Try sending a smaller amount</li>
                 <li>Make sure the stealth address was funded in Step 4</li>
+              </ul>
+            </div>
+          `;
+        } else if (errorMsg.includes('exceed balance') || errorMsg.includes('Resources bounds')) {
+          helpText = `
+            <div class="info-box" style="margin-top: 0.5rem;">
+              <strong>Insufficient balance for gas:</strong> The max potential gas cost exceeds the account balance.
+              <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+                <li>Try sending a smaller amount (leave ~0.04 STRK for gas fees)</li>
+                <li>Or add more STRK to the stealth account</li>
               </ul>
             </div>
           `;
@@ -2311,6 +2820,8 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       initDebugPanel();
+      updateNetworkStatus();
+      renderMainnetUsd();
       console.log('[init] Page loaded, wallet detection scheduled');
     });
   </script>
