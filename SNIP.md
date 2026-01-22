@@ -1,6 +1,7 @@
 ---
 snip: TBD
 title: Stealth Address Protocol for Starknet
+description: Standard for stealth address announcements and account derivation on Starknet
 author: Omar Espejel <omar@starknet.org>
 discussions-to: https://community.starknet.io/t/XXXXXX
 status: Draft
