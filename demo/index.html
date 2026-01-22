@@ -664,7 +664,7 @@
     <div id="scan-tab" class="tab-content">
       <!-- Flow Overview -->
       <div class="flow-overview" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(78, 205, 196, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
-        <div style="font-weight: 600; color: #facc15; margin-bottom: 0.5rem;">Scan & Claim Payments</div>
+        <div style="font-weight: 600; color: #facc15; margin-bottom: 0.5rem;">Scan Payments</div>
         <div style="font-size: 0.85rem; color: #ccc;">
           Use your private key to find stealth payments sent to you.
           <br>
@@ -705,34 +705,6 @@
         </div>
       </div>
 
-      <div class="step">
-        <div class="step-header">
-          <span class="step-number">3</span>
-          <span class="step-title">Claim / Spend</span>
-        </div>
-        <p class="step-desc">Use the recovered stealth private key to send funds from the stealth account.</p>
-
-        <div class="input-group">
-          <div class="input-label">Stealth Address</div>
-          <input type="text" id="claim-stealth-address" placeholder="0x...">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Stealth Private Key</div>
-          <input type="password" id="claim-stealth-key" placeholder="0x...">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Recipient Address</div>
-          <input type="text" id="claim-recipient" placeholder="0x...">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Amount (STRK)</div>
-          <input type="text" id="claim-amount" placeholder="0.1">
-          <button onclick="setMaxStrkAmount()" style="margin-top: 0.4rem;" type="button">Max</button>
-        </div>
-
-        <button class="btn-primary" onclick="sendStealthTransfer()" type="button">Send From Stealth Account</button>
-        <div id="claim-output" class="output" style="display: none;"></div>
-      </div>
     </div>
 
     <!-- Contract Info -->
@@ -1042,21 +1014,6 @@
       });
     }
 
-    function setClaimInputs(match) {
-      const addrInput = document.getElementById('claim-stealth-address');
-      const keyInput = document.getElementById('claim-stealth-key');
-      const recipientInput = document.getElementById('claim-recipient');
-      if (addrInput && match && match.stealthAddress) {
-        addrInput.value = match.stealthAddress;
-      }
-      if (keyInput && match && match.stealthPriv) {
-        keyInput.value = toHex(match.stealthPriv);
-      }
-      if (recipientInput && account && account.address) {
-        recipientInput.value = account.address;
-      }
-    }
-
     async function hasMetaAddress(address) {
       const result = await callContract(CONFIG.registryAddress, 'has_meta_address', [address]);
       return BigInt(result[0]) !== 0n;
@@ -1317,7 +1274,6 @@
         'fund-output',
         'register-output',
         'recipient-keys-output',
-        'claim-output',
       ];
       outputs.forEach((id) => {
         const el = document.getElementById(id);
@@ -2422,7 +2378,6 @@
           });
 
           lastMatches = matches;
-          setClaimInputs(matches[0]);
 
           html += `
             <div class="divider"></div>
@@ -2447,299 +2402,6 @@
         console.error('Scan error:', err);
         status.className = 'status error';
         status.innerHTML = 'Scan failed: ' + err.message;
-      }
-    }
-
-    // Spend from stealth account using recovered private key
-    async function sendStealthTransfer() {
-      const stealthAddress = document.getElementById('claim-stealth-address').value.trim();
-      const stealthKey = document.getElementById('claim-stealth-key').value.trim();
-      const recipient = document.getElementById('claim-recipient').value.trim();
-      const amountStr = document.getElementById('claim-amount').value.trim();
-      const output = document.getElementById('claim-output');
-
-      if (!stealthAddress || !stealthKey || !recipient || !amountStr) {
-        alert('Please fill all fields');
-        return;
-      }
-
-      output.style.display = 'block';
-      output.innerHTML = '<div class="status pending"><div class="spinner"></div>Preparing stealth transfer...</div>';
-
-      try {
-        const deployed = await isContractDeployed(normalizeAddress(stealthAddress));
-        if (!deployed) {
-          output.innerHTML = `
-            <div class="status error">Stealth account not deployed.</div>
-            <div class="info-box">
-              This stealth address does not exist on-chain yet. Make sure you used the latest Deploy & Announce flow,
-              or select the newest matching announcement.
-            </div>
-          `;
-          return;
-        }
-
-        const sn = await getStarknetModule();
-        
-        // Use the configured RPC endpoint for fee estimation + execution
-        const rpcUrl = CONFIG.rpcUrl;
-        const provider = new sn.RpcProvider({ nodeUrl: rpcUrl });
-
-        // Create account (support both v6 and v9 constructor styles)
-        // IMPORTANT: Always use V3 transactions - V1 is deprecated on Starknet
-        let accountFromKey = null;
-        try {
-          // starknet.js v6+ object-style constructor
-          accountFromKey = new sn.Account({
-            provider,
-            address: normalizeAddress(stealthAddress),
-            signer: stealthKey,
-            cairoVersion: '1',
-            transactionVersion: sn.ETransactionVersion ? sn.ETransactionVersion.V3 : '0x3',
-          });
-        } catch (err) {
-          // starknet.js v5 positional constructor - create then set version
-          accountFromKey = new sn.Account(
-            provider,
-            normalizeAddress(stealthAddress),
-            stealthKey,
-            '1'  // Cairo version 1
-          );
-          // Force V3 transaction version on older starknet.js
-          if (sn.ETransactionVersion) {
-            accountFromKey.transactionVersion = sn.ETransactionVersion.V3;
-          }
-        }
-
-        const amount = parseAmountToUint256(amountStr);
-        const transferCall = {
-          contractAddress: CONFIG.strkTokenAddress,
-          entrypoint: 'transfer',
-          calldata: [
-            normalizeAddress(recipient),
-            toHex(amount.low),
-            toHex(amount.high)
-          ]
-        };
-
-        console.log('[transfer] Executing transfer from stealth account...');
-        console.log('[transfer] From:', stealthAddress);
-        console.log('[transfer] To:', recipient);
-        console.log('[transfer] Amount:', amountStr, 'STRK');
-        console.log('[transfer] Stealth private key (first 10 chars):', stealthKey.substring(0, 10) + '...');
-        
-        // Debug: compute public key from private key to verify it matches account
-        try {
-          const pubKey = sn.ec.starkCurve.getStarkKey(stealthKey);
-          console.log('[transfer] Computed public key from private key:', pubKey);
-          
-          // Try to read the account's stored public key
-          const storedPubKey = await rpcCall(stealthAddress, 'get_public_key', []);
-          console.log('[transfer] Account stored public key:', storedPubKey);
-          
-          if (storedPubKey && storedPubKey[0]) {
-            const storedHex = toHex(BigInt(storedPubKey[0]));
-            const computedHex = toHex(BigInt(pubKey));
-            console.log('[transfer] Keys match?', storedHex === computedHex);
-            if (storedHex !== computedHex) {
-              console.error('[transfer] KEY MISMATCH! Stored:', storedHex, 'Computed:', computedHex);
-            }
-          }
-        } catch (e) {
-          console.warn('[transfer] Could not verify key:', e.message);
-        }
-
-        // Pre-fetch nonce using latest block (some RPCs reject "pending")
-        let nonceHex = null;
-        try {
-          const nonce = await rpcRequest('starknet_getNonce', ['latest', normalizeAddress(stealthAddress)]);
-          nonceHex = toHex(BigInt(nonce));
-        } catch (err) {
-          console.warn('[transfer] Failed to fetch nonce via RPC:', err.message);
-          try {
-            const nonce = await provider.getNonceForAddress(normalizeAddress(stealthAddress), 'latest');
-            nonceHex = toHex(BigInt(nonce));
-          } catch (err2) {
-            console.warn('[transfer] Failed to fetch nonce via provider:', err2.message);
-          }
-        }
-
-        // Estimate fees using the account (more reliable than provider method)
-        let resourceBounds = null;
-        try {
-          console.log('[transfer] Estimating fees...');
-          const estimate = await accountFromKey.estimateInvokeFee([transferCall], {
-            skipValidate: true
-          });
-          console.log('[transfer] Fee estimate result:', estimate);
-          
-          // Extract resource bounds from estimate (starknet.js v6+)
-          if (estimate && estimate.resourceBounds) {
-            resourceBounds = estimate.resourceBounds;
-            console.log('[transfer] Using estimated resourceBounds:', resourceBounds);
-          } else if (estimate && estimate.gas_consumed !== undefined) {
-            // Fallback: construct from gas_consumed if resourceBounds not present
-            const gasConsumed = BigInt(estimate.gas_consumed || estimate.overall_fee || 0);
-            const gasPrice = BigInt(estimate.gas_price || estimate.unit_price || 10n ** 11n);
-            console.log('[transfer] Constructing resourceBounds from gas estimate:', { gasConsumed, gasPrice });
-          }
-        } catch (err) {
-          console.warn('[transfer] Fee estimate failed:', err.message);
-        }
-
-        // Execute transaction (pass resourceBounds to avoid internal estimate)
-        // IMPORTANT: Always use V3 transactions - V1 is deprecated on Starknet
-        const txDetails = {};
-        if (nonceHex) txDetails.nonce = nonceHex;
-        
-        // Always use V3 transaction format
-        txDetails.version = sn.ETransactionVersion ? sn.ETransactionVersion.V3 : '0x3';
-        txDetails.tip = '0x0';
-        txDetails.paymasterData = [];
-        txDetails.accountDeploymentData = [];
-        txDetails.nonceDataAvailabilityMode = 'L1';
-        txDetails.feeDataAvailabilityMode = 'L1';
-        
-        if (resourceBounds) {
-          // Ensure l1_data_gas is present (required by Starknet 0.13.2+)
-          if (!resourceBounds.l1_data_gas) {
-            resourceBounds.l1_data_gas = { max_amount: '0x100', max_price_per_unit: toHex(2n * 10n ** 12n) };
-          }
-          txDetails.resourceBounds = resourceBounds;
-        } else {
-          // Fallback: construct V3-compatible resourceBounds when fee estimation fails
-          // Using very generous buffers - account should have sufficient balance
-          // Max cost estimate: ~0.5 STRK (safe for accounts with 1+ STRK)
-          console.log('[transfer] Using fallback resourceBounds (fee estimation failed)');
-          txDetails.resourceBounds = {
-            l1_gas: {
-              max_amount: toHex(10000n),
-              max_price_per_unit: toHex(500n * 10n ** 12n) // 500 trillion wei
-            },
-            l2_gas: {
-              max_amount: toHex(2000000n), // 2M units
-              max_price_per_unit: toHex(200n * 10n ** 9n) // 200 gwei
-              // Max L2 cost: 2M * 200 gwei = 0.4 STRK
-            },
-            l1_data_gas: {
-              max_amount: toHex(1000n), // 1000 units
-              max_price_per_unit: toHex(100n * 10n ** 12n) // 100 trillion wei
-              // Max L1Data cost: 1000 * 100T = 0.1 STRK
-            }
-          };
-        }
-
-        const tx = await accountFromKey.execute([transferCall], txDetails);
-        output.innerHTML = `
-          <div class="status pending"><div class="spinner"></div>Waiting for confirmation...</div>
-          <div class="output-row" style="margin-top: 0.5rem;">
-            <span class="output-label">TX:</span>
-            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
-          </div>
-        `;
-
-        await waitForTxOn(provider, tx.transaction_hash);
-
-        output.innerHTML = `
-          <div class="milestone">Milestone reached: stealth spend broadcast.</div>
-          <div class="status success">Transfer submitted</div>
-          <div class="divider"></div>
-          <div class="output-row">
-            <span class="output-label">TX:</span>
-            <a href="https://sepolia.starkscan.co/tx/${tx.transaction_hash}" target="_blank" class="tx-link">${truncate(tx.transaction_hash)}</a>
-          </div>
-        `;
-      } catch (err) {
-        console.error('Stealth transfer error:', err);
-        let errorMsg = err.message || 'Unknown error';
-        let helpText = '';
-        
-        // Parse common errors
-        if (errorMsg.includes('version is not supported') || errorMsg.includes('transaction version')) {
-          helpText = `
-            <div class="info-box" style="margin-top: 0.5rem;">
-              <strong>Transaction version error:</strong> The transaction was rejected because of version incompatibility.
-              This usually means V1 transactions are deprecated. Please refresh the page and try again.
-              If the error persists, check that starknet.js is properly loaded.
-            </div>
-          `;
-        } else if (errorMsg.includes('Invalid block id') || errorMsg.includes('getNonce') || errorMsg.includes('estimateFee')) {
-          helpText = `
-            <div class="info-box" style="margin-top: 0.5rem;">
-              <strong>RPC note:</strong> Your RPC does not accept "pending" for fee estimation or nonce.
-              The demo now estimates on "latest" and falls back to default resource bounds. Please retry.
-            </div>
-          `;
-        } else if (errorMsg.includes('Cannot convert undefined to a BigInt') || errorMsg.includes('parseFeeEstimate')) {
-          helpText = `
-            <div class="info-box" style="margin-top: 0.5rem;">
-              <strong>Possible causes:</strong>
-              <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
-                <li>The stealth account may not have enough STRK for gas fees</li>
-                <li>Try sending a smaller amount</li>
-                <li>Make sure the stealth address was funded in Step 4</li>
-              </ul>
-            </div>
-          `;
-        } else if (errorMsg.includes('exceed balance') || errorMsg.includes('Resources bounds')) {
-          helpText = `
-            <div class="info-box" style="margin-top: 0.5rem;">
-              <strong>Insufficient balance for gas:</strong> The max potential gas cost exceeds the account balance.
-              <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
-                <li>Try sending a smaller amount (leave ~0.04 STRK for gas fees)</li>
-                <li>Or add more STRK to the stealth account</li>
-              </ul>
-            </div>
-          `;
-        } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
-          helpText = `
-            <div class="info-box" style="margin-top: 0.5rem;">
-              The stealth account doesn't have enough balance. Make sure you funded it in Step 4.
-            </div>
-          `;
-        }
-        
-        output.innerHTML = `
-          <div class="status error">Error: ${errorMsg}</div>
-          ${helpText}
-        `;
-      }
-    }
-
-    async function setMaxStrkAmount() {
-      const stealthAddress = document.getElementById('claim-stealth-address').value.trim();
-      const amountInput = document.getElementById('claim-amount');
-      const output = document.getElementById('claim-output');
-      if (!stealthAddress) {
-        alert('Please enter a stealth address first');
-        return;
-      }
-      try {
-        console.log('[claim] Fetching STRK balance for:', stealthAddress);
-        if (output) {
-          output.style.display = 'block';
-          output.innerHTML = '<div class="status pending"><div class="spinner"></div>Fetching STRK balance...</div>';
-        }
-        const balance = await rpcCall(
-          CONFIG.strkTokenAddress,
-          'balanceOf',
-          [normalizeAddress(stealthAddress)]
-        );
-        if (!balance || balance.length < 2) {
-          throw new Error('Invalid balance response');
-        }
-        const amount = uint256ToBigInt(balance[0], balance[1]);
-        amountInput.value = formatUnits(amount, 18);
-        if (output) {
-          output.innerHTML = '<div class="status success">Max STRK balance loaded.</div>';
-        }
-      } catch (err) {
-        console.error('Max balance error:', err);
-        if (output) {
-          output.innerHTML = `<div class="status error">Failed to fetch STRK balance: ${err.message}</div>`;
-        } else {
-          alert('Failed to fetch STRK balance: ' + err.message);
-        }
       }
     }
 
