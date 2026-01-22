@@ -8,9 +8,39 @@ Privacy-preserving payments on Starknet using stealth addresses. Recipients can 
 
 | Contract | Address | Explorer |
 |----------|---------|----------|
-| **StealthRegistry** | `0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c` | [View](https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c) |
-| **StealthAccountFactory** | `0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb` | [View](https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb) |
-| **StealthAccount** (class) | `0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd` | - |
+| **StealthRegistry** | `0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0` | [View](https://sepolia.starkscan.co/contract/0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0) |
+| **StealthAccountFactory** | `0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085` | [View](https://sepolia.starkscan.co/contract/0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085) |
+| **StealthAccount** (class) | `0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427` | - |
+
+### Sepolia Cost Report (2026-01-22)
+
+Measured on Sepolia using `scripts/demo/costs.ts`. Full raw data in `deployments/sepolia_costs.json`.
+
+| Step | Transaction | Fee (STRK) | L2 gas | L1 data gas |
+|------|-------------|------------|--------|-------------|
+| Register meta-address | [0x4369...b2e](https://sepolia.starkscan.co/tx/0x4369df0e44f5ae6c54c3ea02a354f4f0fa0c598927ba19a80627e92cfb05b2e) | 0.010747415167060608 | 1302400 | 672 |
+| Deploy stealth account | [0x64ff...595](https://sepolia.starkscan.co/tx/0x64ff72456d2e41d3634765f37d5319874a8fc54868f0834ac30267d119a7595) | 0.012016945763760096 | 1452160 | 864 |
+| Announce payment | [0x76c4...f88](https://sepolia.starkscan.co/tx/0x76c476c1233d219ed586de96109a65a5f470d51ed0f5a52d1b42537dabe0f88) | 0.009026894378373952 | 1117760 | 288 |
+| Fund stealth address | [0x264f...b7a](https://sepolia.starkscan.co/tx/0x264f38f887ea924417653fa46b27420d98551871112701a24a6aa12e4a4ab7a) | 0.009111974835850144 | 1116800 | 224 |
+| Spend from stealth account | [0x5cd1...c5f](https://sepolia.starkscan.co/tx/0x5cd1be542cbbe214c227469ea577bb206993a9aca85214e1a55403fcb3e7c5f) | 0.007832112901324608 | 971955 | 192 |
+
+### Mainnet Cost Estimate (2026-01-22)
+
+Estimated using Sepolia resource usage and mainnet gas prices from
+`scripts/demo/estimate-mainnet.ts`. Full output in `deployments/mainnet_estimate.json`.
+
+| Step | Estimated fee (STRK) |
+|------|----------------------|
+| Register meta-address | 0.010426505462009216 |
+| Deploy stealth account | 0.011626672736868992 |
+| Announce payment | 0.008945210912289664 |
+| Fund stealth address | 0.008936835154003072 |
+| Spend from stealth account | 0.007777727274859776 |
+| **Total** | **0.04771295154003072** |
+
+## Audits
+
+- **Nethermind AuditAgent (2026-01-21)**: [Summary](./audits/README.md) · [PDF](./audits/raw/audit_agent_report_1_d530a46b-4d72-43b4-b64b-0db3bffb285c.pdf)
 
 ## Features
 
@@ -124,7 +154,7 @@ Starknet ECDSA verification binds only to the **public key X coordinate**. The s
 
 ### Optional Announcement Rate Limiting
 
-Registries may enable a **per-caller minimum block gap** between announcements to reduce spam. The default is disabled to keep the registry permissionless.
+Registries may enable a **per-caller minimum block gap** between announcements to reduce spam. The default is disabled (gap = 0) to keep the registry permissionless; an owner can raise the gap up to a capped maximum, and changes apply only to new announcements.
 
 ### Known Limitations
 
@@ -133,8 +163,19 @@ This protocol provides **recipient unlinkability** but shares limitations with o
 - Transaction amounts remain visible
 - Sender addresses are exposed in announcements
 - Timing correlation attacks are possible
+- Announcements can be spammed (permissionless announce; per-caller limits are sybil-bypassable)
 
-See the [Security Analysis](./docs/PRIVACY_AUDIT.md) for detailed analysis and the [Tongo Integration](#privacy-stack-integration-with-tongo) section for achieving full privacy.
+See the [Audit Summary](./audits/README.md) for detailed analysis and the [Tongo Integration](#privacy-stack-integration-with-tongo) section for achieving full privacy.
+
+### Stronger Privacy: Paymasters + Tongo
+
+Stealth addresses solve **recipient unlinkability**, but stronger privacy requires **amount hiding** and **fee unlinkability**:
+
+- **Tongo** can add amount privacy so observers cannot link deposits/withdrawals by value.
+- **Paymasters** can sponsor fees so the payer address is not linked to the recipient’s announce/spend flow.
+- Starknet’s **native account abstraction** (accounts are contracts) makes paymaster-style flows cleaner than ERC‑4337 on Ethereum, while Solana’s fee‑payer model is flexible but does not offer programmable account validation in the same way. Today, paymasters are implemented via standards/services (SNIP‑9 / SNIP‑29), with protocol-level support on the V3 roadmap.
+
+Together, stealth + Tongo + paymasters can move closer to Monero‑grade privacy in a smart‑contract setting.
 
 ### Security Assumptions
 
@@ -142,6 +183,7 @@ See the [Security Analysis](./docs/PRIVACY_AUDIT.md) for detailed analysis and t
 - RPC providers can observe queries and timing; avoid leaking metadata.
 - Private keys are generated and stored securely by the client.
 - The SDK relies on `@scure/starknet` and Starknet standard cryptography.
+- Registry and factory contracts are immutable; upgrades require redeploy/migration.
 
 ## Privacy Best Practices
 
@@ -149,6 +191,7 @@ See the [Security Analysis](./docs/PRIVACY_AUDIT.md) for detailed analysis and t
 - Avoid consolidating multiple stealth withdrawals into a single collector address.
 - Use varied funding sources or relayers for gas to reduce linkage.
 - Consider delayed withdrawals and amount splitting for timing correlation resistance.
+- Never reuse ephemeral keys; the SDK generates fresh randomness per payment.
 
 ## Privacy Rationale (Concise)
 

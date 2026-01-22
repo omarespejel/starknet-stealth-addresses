@@ -8,16 +8,16 @@ TypeScript SDK for generating and scanning stealth addresses on Starknet.
 
 | Contract | Address |
 |----------|---------|
-| **StealthRegistry** | [`0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c`](https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c) |
-| **StealthAccountFactory** | [`0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb`](https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb) |
-| **StealthAccount** (class hash) | `0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd` |
+| **StealthRegistry** | [`0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0`](https://sepolia.starkscan.co/contract/0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0) |
+| **StealthAccountFactory** | [`0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085`](https://sepolia.starkscan.co/contract/0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085) |
+| **StealthAccount** (class hash) | `0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427` |
 
 ```typescript
 // Sepolia Configuration (updated 2026-01-20)
 const SEPOLIA_CONFIG = {
-  registryAddress: '0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c',
-  factoryAddress: '0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb',
-  accountClassHash: '0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd',
+  registryAddress: '0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0',
+  factoryAddress: '0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085',
+  accountClassHash: '0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427',
   rpcUrl: 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY',
   chainId: '0x534e5f5345504f4c4941',
 };

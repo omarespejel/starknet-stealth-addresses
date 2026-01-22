@@ -376,13 +376,13 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" data-tab="send" onclick="showTab('send')">Send (Bob)</div>
-      <div class="tab" data-tab="receive" onclick="showTab('receive')">Receive (Alice)</div>
+      <div class="tab active" data-tab="receive" onclick="showTab('receive')">Receive (Alice)</div>
+      <div class="tab" data-tab="send" onclick="showTab('send')">Send (Bob)</div>
       <div class="tab" data-tab="scan" onclick="showTab('scan')">Scan</div>
     </div>
 
     <!-- SEND TAB (Bob's perspective) -->
-    <div id="send-tab" class="tab-content active">
+    <div id="send-tab" class="tab-content">
       <!-- Flow Overview -->
       <div class="flow-overview" style="background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1)); border: 1px solid rgba(78, 205, 196, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
         <div style="font-weight: 600; color: #4ecdc4; margin-bottom: 0.5rem;">Stealth Payment Flow (4 Steps)</div>
@@ -513,7 +513,7 @@
     </div>
 
     <!-- RECEIVE TAB (Alice's perspective) -->
-    <div id="receive-tab" class="tab-content">
+    <div id="receive-tab" class="tab-content active">
       <!-- Flow Overview -->
       <div class="flow-overview" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(78, 205, 196, 0.1)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
         <div style="font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Recipient Setup (One-Time)</div>
@@ -640,15 +640,15 @@
     <div class="contracts-info">
       <div class="contract-item">
         <h4>StealthRegistry</h4>
-        <code>0x0638f004...991c</code>
+        <code>0x30e391e0...c1f0</code>
         <br>
-        <a href="https://sepolia.starkscan.co/contract/0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c" target="_blank" class="tx-link">View on Explorer</a>
+        <a href="https://sepolia.starkscan.co/contract/0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0" target="_blank" class="tx-link">View on Explorer</a>
       </div>
       <div class="contract-item">
         <h4>StealthAccountFactory</h4>
-        <code>0x06a715a0...a7cb</code>
+        <code>0x2175848f...5085</code>
         <br>
-        <a href="https://sepolia.starkscan.co/contract/0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb" target="_blank" class="tx-link">View on Explorer</a>
+        <a href="https://sepolia.starkscan.co/contract/0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085" target="_blank" class="tx-link">View on Explorer</a>
       </div>
     </div>
 
@@ -662,20 +662,22 @@
   </div>
 
   <script>
-    // Configuration - Updated 2026-01-20 with fixed compute_stealth_address
+    // Configuration - Updated 2026-01-22 with latest deployments
     const CONFIG = {
-      registryAddress: '0x0638f00436e34e4d932b2f173eabcfb20e9173585ae5862bc1778fb645e0991c',
-      factoryAddress: '0x06a715a0a2147db921bb25f4ed880cc4dba2a434851b8b32e6b1ca9ac31aa7cb',
-      accountClassHash: '0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd',
-      rpcUrl: 'https://api.zan.top/public/starknet-sepolia',
+      registryAddress: '0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0',
+      factoryAddress: '0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085',
+      accountClassHash: '0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427',
+      rpcUrl: 'https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/cf52O0RwFy1mEB0uoYsel',
       ethTokenAddress: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
       strkTokenAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+      schemeId: '0x0',
     };
 
     // ABIs
     const REGISTRY_ABI = [
-      { type: "function", name: "register_stealth_meta_address", inputs: [{ name: "spending_key_x", type: "felt" }, { name: "spending_key_y", type: "felt" }], outputs: [] },
-      { type: "function", name: "get_stealth_meta_address", inputs: [{ name: "user", type: "felt" }], outputs: [{ name: "x", type: "felt" }, { name: "y", type: "felt" }] },
+      { type: "function", name: "register_stealth_meta_address", inputs: [{ name: "spending_pubkey_x", type: "felt" }, { name: "spending_pubkey_y", type: "felt" }, { name: "viewing_pubkey_x", type: "felt" }, { name: "viewing_pubkey_y", type: "felt" }, { name: "scheme_id", type: "felt" }], outputs: [] },
+      { type: "function", name: "update_stealth_meta_address", inputs: [{ name: "spending_pubkey_x", type: "felt" }, { name: "spending_pubkey_y", type: "felt" }, { name: "viewing_pubkey_x", type: "felt" }, { name: "viewing_pubkey_y", type: "felt" }, { name: "scheme_id", type: "felt" }], outputs: [] },
+      { type: "function", name: "get_stealth_meta_address", inputs: [{ name: "user", type: "felt" }], outputs: [{ name: "scheme_id", type: "felt" }, { name: "spending_pubkey_x", type: "felt" }, { name: "spending_pubkey_y", type: "felt" }, { name: "viewing_pubkey_x", type: "felt" }, { name: "viewing_pubkey_y", type: "felt" }] },
       { type: "function", name: "has_meta_address", inputs: [{ name: "user", type: "felt" }], outputs: [{ name: "result", type: "felt" }] },
       { type: "function", name: "announce", inputs: [{ name: "scheme_id", type: "felt" }, { name: "ephemeral_pubkey_x", type: "felt" }, { name: "ephemeral_pubkey_y", type: "felt" }, { name: "stealth_address", type: "felt" }, { name: "view_tag", type: "felt" }, { name: "metadata", type: "felt" }], outputs: [] },
     ];
@@ -836,6 +838,35 @@
     async function hasMetaAddress(address) {
       const result = await callContract(CONFIG.registryAddress, 'has_meta_address', [address]);
       return BigInt(result[0]) !== 0n;
+    }
+
+    function parseMetaAddress(values) {
+      if (!Array.isArray(values)) return null;
+      try {
+        if (values.length >= 5) {
+          return {
+            schemeId: BigInt(values[0]),
+            spendingX: BigInt(values[1]),
+            spendingY: BigInt(values[2]),
+            viewingX: BigInt(values[3]),
+            viewingY: BigInt(values[4])
+          };
+        }
+        if (values.length >= 2) {
+          const x = BigInt(values[0]);
+          const y = BigInt(values[1]);
+          return {
+            schemeId: 0n,
+            spendingX: x,
+            spendingY: y,
+            viewingX: x,
+            viewingY: y
+          };
+        }
+      } catch (err) {
+        console.warn('[parseMetaAddress] Failed to parse:', err.message);
+      }
+      return null;
     }
 
     async function computeStealthContractAddress() {
@@ -1493,21 +1524,34 @@
         // Use direct RPC call instead of wallet provider (more reliable)
         const values = await callContract(CONFIG.registryAddress, 'get_stealth_meta_address', [address]);
         console.log('[lookup] Raw result:', values);
-        
-        if (values.length >= 2 && values[0] !== '0x0') {
-          const [x, y] = values;
-          document.getElementById('recipient-key-x').value = toHex(BigInt(x));
-          document.getElementById('recipient-key-y').value = toHex(BigInt(y));
+
+        const meta = parseMetaAddress(values);
+        const spendingX = meta ? meta.spendingX : 0n;
+        const spendingY = meta ? meta.spendingY : 0n;
+        const schemeId = meta ? meta.schemeId : null;
+        const expectedScheme = BigInt(CONFIG.schemeId);
+
+        if (meta && spendingX !== 0n && spendingY !== 0n) {
+          document.getElementById('recipient-key-x').value = toHex(spendingX);
+          document.getElementById('recipient-key-y').value = toHex(spendingY);
+          const schemeWarning = (schemeId !== null && schemeId !== expectedScheme)
+            ? `<div class="status error" style="margin-top: 0.5rem;">Warning: registry scheme_id ${schemeId.toString()} does not match demo scheme ${expectedScheme.toString()}.</div>`
+            : '';
           output.innerHTML = `
             <div class="status success">Found meta-address</div>
             <div class="output-row" style="margin-top: 0.5rem;">
               <span class="output-label">Key X:</span>
-              <span class="output-value">${truncate(toHex(BigInt(x)))}</span>
+              <span class="output-value">${truncate(toHex(spendingX))}</span>
             </div>
             <div class="output-row">
               <span class="output-label">Key Y:</span>
-              <span class="output-value">${truncate(toHex(BigInt(y)))}</span>
+              <span class="output-value">${truncate(toHex(spendingY))}</span>
             </div>
+            <div class="output-row">
+              <span class="output-label">Scheme ID:</span>
+              <span class="output-value">${schemeId !== null ? schemeId.toString() : 'n/a'}</span>
+            </div>
+            ${schemeWarning}
           `;
         } else {
           output.innerHTML = '<div class="status error">No meta-address registered for this user</div>';
@@ -1659,7 +1703,7 @@
         }, 8000);
 
         const announceCall = makeCall(CONFIG.registryAddress, 'announce', [
-          '0x0', // scheme_id
+          CONFIG.schemeId,
           toHex(stealthData.ephemeralPub.x),
           toHex(stealthData.ephemeralPub.y),
           stealthAddress,
@@ -1774,7 +1818,13 @@
           return;
         }
 
-        const call = makeCall(CONFIG.registryAddress, 'register_stealth_meta_address', [keyX, keyY]);
+        const call = makeCall(CONFIG.registryAddress, 'register_stealth_meta_address', [
+          keyX,
+          keyY,
+          keyX,
+          keyY,
+          CONFIG.schemeId
+        ]);
         const tx = await account.execute([call]);
 
         output.innerHTML = `
@@ -1845,7 +1895,13 @@
       }
 
       try {
-        const call = makeCall(CONFIG.registryAddress, 'update_stealth_meta_address', [keyX, keyY]);
+        const call = makeCall(CONFIG.registryAddress, 'update_stealth_meta_address', [
+          keyX,
+          keyY,
+          keyX,
+          keyY,
+          CONFIG.schemeId
+        ]);
         const tx = await account.execute([call]);
 
         output.innerHTML = `
@@ -1939,14 +1995,17 @@
           const ephemeralX = data[0];
           const ephemeralY = data[1];
           const stealthAddress = data[2];
+          const schemeIdOnChain = keys[1] ? BigInt(keys[1]) : null;
           const viewTagOnChain = keys[2] ? Number(BigInt(keys[2]) % 256n) : null;
+          const expectedSchemeId = BigInt(CONFIG.schemeId);
+          const schemeMatches = schemeIdOnChain === null || schemeIdOnChain === expectedSchemeId;
 
           const ephemPoint = { x: fromHex(ephemeralX), y: fromHex(ephemeralY) };
           const sharedSecret = pointMul(privateKey, ephemPoint);
           const hashS = mod(simpleHash(sharedSecret.x, sharedSecret.y), CURVE_ORDER);
           const computedViewTag = Number(hashS % 256n);
 
-          const isMatch = (viewTagOnChain !== null) && (computedViewTag === viewTagOnChain);
+          const isMatch = schemeMatches && (viewTagOnChain !== null) && (computedViewTag === viewTagOnChain);
           if (isMatch) {
             const stealthPriv = mod(privateKey + hashS, CURVE_ORDER);
             matches.push({
@@ -1963,6 +2022,7 @@
               <div><strong>Announcement ${idx + 1}</strong> ${isMatch ? '<span class="match-badge">MATCH</span>' : ''}</div>
               <div>Ephemeral R.x: ${truncate(ephemeralX)}</div>
               <div>Ephemeral R.y: ${truncate(ephemeralY)}</div>
+              <div>Scheme ID: ${schemeIdOnChain !== null ? schemeIdOnChain.toString() : 'n/a'}</div>
               <div>View Tag: ${viewTagOnChain !== null ? viewTagOnChain : 'n/a'} (computed ${computedViewTag})</div>
               <div>Stealth Address: ${truncate(stealthAddress)}</div>
               <div>TX: <a href="https://sepolia.starkscan.co/tx/${ev.transaction_hash}" target="_blank" class="tx-link">${truncate(ev.transaction_hash)}</a></div>
