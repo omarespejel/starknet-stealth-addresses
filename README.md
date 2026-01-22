@@ -58,7 +58,7 @@ npm install @starknet-stealth/sdk
 - **Deterministic Addresses**: Senders can pre-compute addresses before deployment
 - **Production-Grade Security**: Defense-in-depth validation using native Starknet ECDSA
 - **Dual-Key Support**: Separate viewing keys for delegated scanning
-- **96 Tests Passing**: Unit, security, integration, E2E, fuzz, stress, and gas benchmarks
+- **96 Cairo Tests + 17 SDK Tests Passing**: Unit, security, integration, E2E, fuzz, stress, and gas benchmarks
 
 ## How It Works
 
@@ -115,10 +115,10 @@ cd demo && python3 -m http.server 8080
 # Build Cairo contracts
 scarb build
 
-# Run Cairo tests
+# Run Cairo tests (96)
 snforge test
 
-# Run SDK tests
+# Run SDK tests (17)
 cd sdk && npm test
 
 # Format code
@@ -282,7 +282,7 @@ With BOTH:
 
 ### Current Status
 - SNIP specification complete
-- 96 tests passing (unit, security, integration, E2E, fuzz, stress, gas)
+- 96 Cairo tests + 17 SDK tests passing
 - Deployed on Sepolia testnet
 - AuditAgent report complete; external audit pending
 
