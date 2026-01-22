@@ -1,6 +1,7 @@
 # Cairo / Scarb
 target/
 Scarb.lock
+SNIP.md
 
 # Starknet Foundry
 .snfoundry_cache/
@@ -60,6 +61,7 @@ coverage/
 
 # Local npm cache
 sdk/.npm-cache/
+.npm-cache/
 
 # Devnet logs (may contain private keys)
 scripts/devnet-e2e/devnet.log

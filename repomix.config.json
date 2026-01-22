@@ -25,27 +25,6 @@
     ]
   },
   "include": [
-    "README.md",
-    ".gitignore",
-    "Makefile",
-    "repomix.config.json",
-    "SNIP.md",
-    "Scarb.toml",
-    "Scarb.lock",
-    "snfoundry.toml",
-    "deployments/**",
-    "src/**",
-    "tests/**",
-    "sdk/package.json",
-    "sdk/tsconfig.json",
-    "sdk/README.md",
-    "sdk/src/**",
-    "scripts/deploy.sh",
-    "scripts/deploy-js/package.json",
-    "scripts/deploy-js/tsconfig.json",
-    "scripts/deploy-js/deploy.ts",
-    "scripts/demo/package.json",
-    "scripts/demo/demo.ts",
-    "demo/index.html"
+    "**/*"
   ]
 }
