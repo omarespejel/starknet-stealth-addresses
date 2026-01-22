@@ -1,7 +1,6 @@
 # Cairo / Scarb
 target/
 Scarb.lock
-SNIP.md
 
 # Starknet Foundry
 .snfoundry_cache/
