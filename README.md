@@ -41,6 +41,14 @@ Estimated using Sepolia resource usage and mainnet gas prices from
 ## Audits
 
 - **Nethermind AuditAgent (2026-01-21)**: [Summary](./audits/README.md) · [PDF](./audits/raw/audit_agent_report_1_d530a46b-4d72-43b4-b64b-0db3bffb285c.pdf)
+  - Scope: Cairo contracts (`src/contracts/*`, `src/crypto/*`, `src/interfaces/*`), SDK + scripts (read-only)
+  - External manual audit: pending (recommended before mainnet)
+
+## SDK
+
+```bash
+npm install @starknet-stealth/sdk
+```
 
 ## Features
 
@@ -50,7 +58,7 @@ Estimated using Sepolia resource usage and mainnet gas prices from
 - **Deterministic Addresses**: Senders can pre-compute addresses before deployment
 - **Production-Grade Security**: Defense-in-depth validation using native Starknet ECDSA
 - **Dual-Key Support**: Separate viewing keys for delegated scanning
-- **87 Tests Passing**: Unit, security, integration, E2E, fuzz, stress, and gas benchmarks
+- **96 Tests Passing**: Unit, security, integration, E2E, fuzz, stress, and gas benchmarks
 
 ## How It Works
 
@@ -107,8 +115,11 @@ cd demo && python3 -m http.server 8080
 # Build Cairo contracts
 scarb build
 
-# Run tests (56 tests)
+# Run Cairo tests
 snforge test
+
+# Run SDK tests
+cd sdk && npm test
 
 # Format code
 scarb fmt
@@ -125,7 +136,7 @@ starknet-stealth-addresses/
 │   │   └── stealth_account_factory.cairo # Deterministic deployment
 │   ├── crypto/                       # View tags, constants
 │   └── interfaces/                   # Contract interfaces
-├── tests/                            # 56 comprehensive tests
+├── tests/                            # 96 comprehensive tests
 ├── sdk/                              # TypeScript SDK
 ├── demo/                             # Interactive demo frontend
 ├── scripts/                          # Deployment scripts
@@ -165,17 +176,16 @@ This protocol provides **recipient unlinkability** but shares limitations with o
 - Timing correlation attacks are possible
 - Announcements can be spammed (permissionless announce; per-caller limits are sybil-bypassable)
 
-See the [Audit Summary](./audits/README.md) for detailed analysis and the [Tongo Integration](#privacy-stack-integration-with-tongo) section for achieving full privacy.
+See the [Audit Summary](./audits/README.md) for detailed analysis and the [Tongo Integration](#privacy-stack-integration-with-tongo) section for optional amount privacy.
 
 ### Stronger Privacy: Paymasters + Tongo
 
-Stealth addresses solve **recipient unlinkability**, but stronger privacy requires **amount hiding** and **fee unlinkability**:
+Stealth addresses solve **recipient unlinkability**, but stronger privacy requires **amount confidentiality** and **fee unlinkability**:
 
-- **Tongo** can add amount privacy so observers cannot link deposits/withdrawals by value.
-- **Paymasters** can sponsor fees so the payer address is not linked to the recipient’s announce/spend flow.
-- Starknet’s **native account abstraction** (accounts are contracts) makes paymaster-style flows cleaner than ERC‑4337 on Ethereum, while Solana’s fee‑payer model is flexible but does not offer programmable account validation in the same way. Today, paymasters are implemented via standards/services (SNIP‑9 / SNIP‑29), with protocol-level support on the V3 roadmap.
+- **Tongo** provides amount privacy via confidential transfers (encrypted balances + ZK proofs). See [tongo.cash](https://www.tongo.cash/).
+- **Paymasters** can sponsor fees so the payer address is not linked to the recipient’s announce/spend flow (availability depends on paymaster infrastructure).
 
-Together, stealth + Tongo + paymasters can move closer to Monero‑grade privacy in a smart‑contract setting.
+Combining stealth addresses with amount privacy and fee sponsorship improves privacy, but does **not** automatically hide the sender without additional relaying or pool-based anonymity.
 
 ### Security Assumptions
 
@@ -206,7 +216,8 @@ Starknet’s pre‑computable addresses and native account abstraction reduce (b
 
 - [SNIP Specification](./SNIP.md) - Full protocol specification
 - [SDK Documentation](./sdk/README.md) - TypeScript SDK usage
-- [Security Analysis](./docs/PRIVACY_AUDIT.md) - Internal security analysis and known limitations
+- [Audit Summary](./audits/README.md) - Findings, remediation notes, and scope
+- [Security Policy](./SECURITY.md) - Vulnerability disclosure process
 
 ## Local Devnet E2E
 
@@ -224,7 +235,7 @@ Run the full flow locally: deploy contracts, register a meta-address, announce, 
 
 ## Privacy Stack: Integration with Tongo
 
-Stealth addresses and [Tongo](https://github.com/tongonetwork/tongo) are **complementary** technologies that together create a complete privacy solution for Starknet.
+Stealth addresses and [Tongo](https://www.tongo.cash/) are complementary: stealth addresses hide recipients, while Tongo hides **amounts**.
 
 ### What Each Provides
 
@@ -232,7 +243,7 @@ Stealth addresses and [Tongo](https://github.com/tongonetwork/tongo) are **compl
 |-----------|------------------|---------------|
 | **Stealth Addresses** | Recipient unlinkability | Who receives funds |
 | **Tongo** | Amount privacy | How much is transferred |
-| **Combined** | Full transaction privacy | Sender, recipient, and amount |
+| **Combined** | Recipient + amount privacy | Recipient and amount (sender privacy requires relayers/pools) |
 
 ### Privacy Comparison
 
@@ -246,15 +257,15 @@ With Stealth Addresses only:
 With Tongo only:
   "Alice (0x123) sent [hidden amount] to Bob (0x456)"
 
-With BOTH (Aztec-level privacy):
-  "[anonymous] sent [hidden amount] to [unlinkable address]"
+With BOTH:
+  "[sender] sent [hidden amount] to [unlinkable address]"
 ```
 
 ### Why Not Just Use Aztec?
 
 | Feature | Aztec | Starknet + Stealth + Tongo |
 |---------|-------|----------------------------|
-| Privacy level | Full | Full (when combined) |
+| Privacy level | Protocol-level full privacy | Recipient + amount privacy (sender privacy depends on relayers/pools) |
 | Execution model | UTXO-like notes | Account abstraction |
 | Composability | Aztec-only contracts | Any Starknet dApp |
 | Adoption | Requires migration | Incremental opt-in |
@@ -271,8 +282,9 @@ With BOTH (Aztec-level privacy):
 
 ### Current Status
 - SNIP specification complete
-- 56 tests passing (unit, security, integration, E2E)
+- 96 tests passing (unit, security, integration, E2E, fuzz, stress, gas)
 - Deployed on Sepolia testnet
+- AuditAgent report complete; external audit pending
 
 ### Before Mainnet (Recommended)
 
@@ -296,7 +308,7 @@ With BOTH (Aztec-level privacy):
 
 - [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) - Ethereum's stealth address standard (inspiration)
 - [SNIP-6](https://community.starknet.io/t/snip-6-standard-account-interface) - Starknet Standard Account Interface
-- [Tongo](https://github.com/tongonetwork/tongo) - Amount privacy (complementary)
+- [Tongo](https://www.tongo.cash/) - Amount privacy (complementary)
 - [Aztec Network](https://aztec.network/) - Full privacy L2 (comparable end-state)
 
 ## Contact
