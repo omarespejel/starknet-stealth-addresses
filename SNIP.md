@@ -14,6 +14,13 @@ requires: SNIP-5, SNIP-6
 
 This SNIP defines a standard for stealth addresses on Starknet, enabling privacy-preserving payments where the recipient's address cannot be linked to their public identity. The protocol uses Elliptic Curve Diffie-Hellman (ECDH) key exchange on the STARK curve to generate one-time addresses that only the intended recipient can spend from.
 
+## Interactive Demo
+
+Live demo: https://starknet-stealth-demo.onrender.com/
+
+The demo walks through the sender flow (lookup → generate → deploy/announce → fund) and recipient scanning.
+Spending from stealth accounts is intentionally omitted in the UI; use the SDK for that step.
+
 ## Prior Art & Inspiration
 
 This specification draws from established stealth address research and implementations:
@@ -638,7 +645,7 @@ A complete reference implementation is available, including Cairo smart contract
 | TypeScript SDK | `sdk/` | ECDH, scanning, address generation |
 | Cairo Test Suite | `tests/` | 96 comprehensive tests |
 | SDK Tests | `sdk/tests/` | 17 unit tests (vitest) |
-| Interactive Demo | `demo/index.html` | Browser-based demo |
+| Interactive Demo | `demo/index.html` | Live demo: https://starknet-stealth-demo.onrender.com/ (sender flow + scan) |
 
 ### TypeScript SDK
 
