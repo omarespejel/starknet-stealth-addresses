@@ -2,7 +2,10 @@
 
 Privacy-preserving payments on Starknet using stealth addresses. Recipients can receive funds at unique, one-time addresses that cannot be linked to their public identity.
 
-> **Live Demo**: [Try it on Sepolia](https://omarespejel.github.io/starknet-stealth-addresses/)
+> **Live Demo**: [starknet-stealth-demo.onrender.com](https://starknet-stealth-demo.onrender.com/)
+
+The demo shows the full sender flow (lookup → generate → deploy/announce → fund) plus recipient scanning.
+Spending from the stealth account is intentionally omitted in the UI; use the SDK or a wallet for that step.
 
 ## Deployed Contracts (Sepolia)
 
