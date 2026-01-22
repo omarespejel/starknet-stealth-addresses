@@ -7,6 +7,7 @@
 # 3. Deploy account: sncast account deploy --name stealth-deployer
 #
 # Usage: ./scripts/deploy.sh
+# Optional: export REGISTRY_OWNER (defaults to ACCOUNT_ADDRESS)
 
 set -e
 
@@ -14,11 +15,19 @@ set -e
 ACCOUNT_NAME="${ACCOUNT_NAME:-stealth-deployer}"
 RPC_URL="${RPC_URL:-https://api.zan.top/public/starknet-sepolia}"
 NETWORK="sepolia"
+ACCOUNT_ADDRESS="${ACCOUNT_ADDRESS:-}"
+REGISTRY_OWNER="${REGISTRY_OWNER:-$ACCOUNT_ADDRESS}"
 
 echo "[*] Deploying Stealth Address Contracts to Starknet $NETWORK"
 echo "    Account: $ACCOUNT_NAME"
 echo "    RPC: $RPC_URL"
+echo "    Registry owner: ${REGISTRY_OWNER:-<unset>}"
 echo ""
+
+if [ -z "$REGISTRY_OWNER" ]; then
+    echo "[X] REGISTRY_OWNER is required (or set ACCOUNT_ADDRESS)"
+    exit 1
+fi
 
 # Build contracts
 echo "[*] Building contracts..."
@@ -88,10 +97,11 @@ fi
 echo ""
 echo "[*] Step 4/4: Deploying contracts..."
 
-# Deploy Registry (no constructor args)
+# Deploy Registry (constructor arg: owner)
 echo "    Deploying StealthRegistry..."
 REGISTRY_DEPLOY=$(sncast --account $ACCOUNT_NAME --url $RPC_URL \
-    deploy --class-hash $REGISTRY_CLASS_HASH 2>&1)
+    deploy --class-hash $REGISTRY_CLASS_HASH \
+    --constructor-calldata $REGISTRY_OWNER 2>&1)
 
 if echo "$REGISTRY_DEPLOY" | grep -q "contract_address:"; then
     REGISTRY_ADDRESS=$(echo "$REGISTRY_DEPLOY" | grep "contract_address:" | awk '{print $2}')

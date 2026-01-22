@@ -19,26 +19,51 @@ import {
   hash,
   ec,
   stark,
-  num
+  num,
+  ETransactionVersion
 } from 'starknet';
+import { config as loadEnv } from 'dotenv';
 import { poseidonHashMany } from '@scure/starknet';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '../../.env');
+loadEnv({ path: envPath });
+
 const CONFIG = {
   rpcUrl: process.env.RPC_URL || 'https://api.zan.top/public/starknet-sepolia',
   
   // Deployed contracts on Sepolia
-  registryAddress: '0x04320728f5b57648dc569a247cb9acf475ec1a0ff17368be127b3621ca2e363a',
-  factoryAddress: '0x06cc6d9ff45a63bf5a15e48dcf27928a9547ac49f540255abca86eb39272c83e',
-  accountClassHash: '0xfe0c0abc68d8c9e9e5dd708e49d4a8547a16c1449c5f16af881c2c98e8bcdd',
+  registryAddress: '0x30e391e0fb3020ccdf4d087ef3b9ac43dae293fe77c96897ced8cc86a92c1f0',
+  factoryAddress: '0x2175848fdac537a13a84aa16b5c1d7cdd4ea063cd7ed344266b99ccc4395085',
+  accountClassHash: '0x30d37d3acccb722a61acb177f6a5c197adb26c6ef09cb9ba55d426ebf07a427',
   
   // Demo account (set via environment variable)
   accountAddress: process.env.ACCOUNT_ADDRESS || '',
   privateKey: process.env.PRIVATE_KEY || '',
 };
+
+const deploymentsPath = path.join(__dirname, '../../deployments/sepolia.json');
+if (fs.existsSync(deploymentsPath)) {
+  try {
+    const deployments = JSON.parse(fs.readFileSync(deploymentsPath, 'utf-8'));
+    CONFIG.registryAddress =
+      deployments?.contracts?.StealthRegistry || CONFIG.registryAddress;
+    CONFIG.factoryAddress =
+      deployments?.contracts?.StealthAccountFactory || CONFIG.factoryAddress;
+    CONFIG.accountClassHash =
+      deployments?.classHashes?.StealthAccount || CONFIG.accountClassHash;
+  } catch (err) {
+    console.warn('[!] Failed to load deployments/sepolia.json:', (err as Error).message);
+  }
+}
 
 // Contract ABIs (minimal for demo)
 const REGISTRY_ABI = [
@@ -210,9 +235,17 @@ async function main() {
   console.log(`    [OK] Connected! Chain ID: ${chainId}`);
   console.log('');
 
-  // Initialize contracts
-  const registry = new Contract(REGISTRY_ABI, CONFIG.registryAddress, provider);
-  const factory = new Contract(FACTORY_ABI, CONFIG.factoryAddress, provider);
+  // Initialize contracts (read-only)
+  let registry = new Contract({
+    abi: REGISTRY_ABI,
+    address: CONFIG.registryAddress,
+    providerOrAccount: provider,
+  });
+  let factory = new Contract({
+    abi: FACTORY_ABI,
+    address: CONFIG.factoryAddress,
+    providerOrAccount: provider,
+  });
 
   // Show current state
   console.log('[*] Current Contract State:');
@@ -242,9 +275,22 @@ async function main() {
   }
 
   // Initialize account for transactions
-  const account = new Account(provider, CONFIG.accountAddress, CONFIG.privateKey);
-  registry.connect(account);
-  factory.connect(account);
+  const account = new Account({
+    provider,
+    address: CONFIG.accountAddress,
+    signer: CONFIG.privateKey,
+    transactionVersion: ETransactionVersion.V3,
+  });
+  registry = new Contract({
+    abi: REGISTRY_ABI,
+    address: CONFIG.registryAddress,
+    providerOrAccount: account,
+  });
+  factory = new Contract({
+    abi: FACTORY_ABI,
+    address: CONFIG.factoryAddress,
+    providerOrAccount: account,
+  });
 
   // =========================================================================
   // STEP 1: Alice generates her stealth meta-address

@@ -38,3 +38,26 @@ This will:
 ```
 make devnet-down
 ```
+
+---
+
+## Sepolia E2E (Testnet)
+
+This script can also run against Sepolia using existing deployments (no declare/deploy).
+
+### Prereqs
+- `deployments/sepolia.json` has current contract addresses and class hashes.
+- Your account has STRK on Sepolia to pay fees.
+
+### Run
+
+```
+E2E_NETWORK=sepolia \
+E2E_RPC_URL=<sepolia_rpc> \
+E2E_ACCOUNT_ADDRESS=<account_address> \
+E2E_ACCOUNT_PRIVATE_KEY=<private_key> \
+npm run e2e
+```
+
+Optional:
+- `E2E_SCAN_FROM=<index>` to skip historical announcements.

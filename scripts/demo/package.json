@@ -3,15 +3,18 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "demo": "npx tsx demo.ts"
+    "demo": "npx tsx demo.ts",
+    "costs": "npx tsx costs.ts",
+    "estimate:mainnet": "npx tsx estimate-mainnet.ts"
   },
   "dependencies": {
-    "starknet": "^6.11.0",
-    "@scure/starknet": "^1.0.0"
+    "@scure/starknet": "^1.0.0",
+    "dotenv": "^17.2.3",
+    "starknet": "^9.2.1"
   },
   "devDependencies": {
+    "@types/node": "^20.10.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.0"
+    "typescript": "^5.3.3"
   }
 }

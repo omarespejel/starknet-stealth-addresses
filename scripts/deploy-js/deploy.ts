@@ -17,6 +17,7 @@ import {
   CallData,
   constants
 } from 'starknet';
+import { config as loadEnv } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,11 +25,39 @@ import { fileURLToPath } from 'url';
 // Get directory path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '../../.env');
+loadEnv({ path: envPath });
+
+function resolveTxVersion(value?: string): '0x3' {
+  if (!value) return '0x3';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '0x3' || normalized === '3' || normalized === 'v3') {
+    return '0x3';
+  }
+  return '0x3';
+}
 
 // Configuration
 const RPC_URL = process.env.RPC_URL || 'https://api.zan.top/public/starknet-sepolia';
 const PRIVATE_KEY = process.env.PRIVATE_KEY || '';
 const ACCOUNT_ADDRESS = process.env.ACCOUNT_ADDRESS || '';
+const REGISTRY_OWNER = process.env.REGISTRY_OWNER || ACCOUNT_ADDRESS;
+const TX_VERSION = resolveTxVersion(process.env.TX_VERSION);
+
+function normalizeBigInt(value: unknown) {
+  if (typeof value === 'bigint') return value.toString();
+  return value;
+}
+
+function pickCosts(receipt: any) {
+  return {
+    actualFee: receipt?.actual_fee ?? receipt?.actualFee ?? null,
+    executionResources: receipt?.execution_resources ?? receipt?.executionResources ?? null,
+    l1Gas: receipt?.l1_gas ?? receipt?.l1Gas ?? null,
+    l1DataGas: receipt?.l1_data_gas ?? receipt?.l1DataGas ?? null,
+    l2Gas: receipt?.l2_gas ?? receipt?.l2Gas ?? null,
+  };
+}
 
 async function main() {
   console.log('[*] Deploying Stealth Address Contracts to Starknet Sepolia\n');
@@ -44,11 +73,12 @@ async function main() {
   console.log('[*] Connecting to Starknet Sepolia...');
   const provider = new RpcProvider({ nodeUrl: RPC_URL });
   
-  const account = new Account(
+  const account = new Account({
     provider,
-    ACCOUNT_ADDRESS,
-    PRIVATE_KEY
-  );
+    address: ACCOUNT_ADDRESS,
+    signer: PRIVATE_KEY,
+    transactionVersion: TX_VERSION,
+  });
 
   // Verify connection
   try {
@@ -86,6 +116,8 @@ async function main() {
 
   console.log('[OK] Contract artifacts loaded\n');
 
+  const transactions: Record<string, { hash: string; costs: any }> = {};
+
   // Step 1: Declare StealthRegistry
   console.log('[*] Step 1/4: Declaring StealthRegistry...');
   let registryClassHash: string;
@@ -95,6 +127,11 @@ async function main() {
       casm: registryCasm,
     });
     await provider.waitForTransaction(declareResponse.transaction_hash);
+    const receipt = await provider.getTransactionReceipt(declareResponse.transaction_hash);
+    transactions.registryDeclare = {
+      hash: declareResponse.transaction_hash,
+      costs: pickCosts(receipt),
+    };
     registryClassHash = declareResponse.class_hash;
     console.log(`    [OK] Class hash: ${registryClassHash}`);
   } catch (e: any) {
@@ -115,6 +152,11 @@ async function main() {
       casm: accountCasm,
     });
     await provider.waitForTransaction(declareResponse.transaction_hash);
+    const receipt = await provider.getTransactionReceipt(declareResponse.transaction_hash);
+    transactions.accountDeclare = {
+      hash: declareResponse.transaction_hash,
+      costs: pickCosts(receipt),
+    };
     accountClassHash = declareResponse.class_hash;
     console.log(`    [OK] Class hash: ${accountClassHash}`);
   } catch (e: any) {
@@ -135,6 +177,11 @@ async function main() {
       casm: factoryCasm,
     });
     await provider.waitForTransaction(declareResponse.transaction_hash);
+    const receipt = await provider.getTransactionReceipt(declareResponse.transaction_hash);
+    transactions.factoryDeclare = {
+      hash: declareResponse.transaction_hash,
+      costs: pickCosts(receipt),
+    };
     factoryClassHash = declareResponse.class_hash;
     console.log(`    [OK] Class hash: ${factoryClassHash}`);
   } catch (e: any) {
@@ -153,9 +200,16 @@ async function main() {
   console.log('    Deploying StealthRegistry...');
   const registryDeployResponse = await account.deployContract({
     classHash: registryClassHash,
-    constructorCalldata: [],
+    constructorCalldata: CallData.compile({
+      owner: REGISTRY_OWNER,
+    }),
   });
   await provider.waitForTransaction(registryDeployResponse.transaction_hash);
+  const registryReceipt = await provider.getTransactionReceipt(registryDeployResponse.transaction_hash);
+  transactions.registryDeploy = {
+    hash: registryDeployResponse.transaction_hash,
+    costs: pickCosts(registryReceipt),
+  };
   const registryAddress = registryDeployResponse.contract_address;
   console.log(`    [OK] Registry: ${registryAddress}`);
 
@@ -168,6 +222,11 @@ async function main() {
     }),
   });
   await provider.waitForTransaction(factoryDeployResponse.transaction_hash);
+  const factoryReceipt = await provider.getTransactionReceipt(factoryDeployResponse.transaction_hash);
+  transactions.factoryDeploy = {
+    hash: factoryDeployResponse.transaction_hash,
+    costs: pickCosts(factoryReceipt),
+  };
   const factoryAddress = factoryDeployResponse.contract_address;
   console.log(`    [OK] Factory: ${factoryAddress}`);
 
@@ -200,6 +259,7 @@ async function main() {
       StealthRegistry: registryAddress,
       StealthAccountFactory: factoryAddress,
     },
+    transactions,
   };
 
   const deploymentsDir = path.join(__dirname, '../../deployments');
@@ -209,7 +269,7 @@ async function main() {
   
   fs.writeFileSync(
     path.join(deploymentsDir, 'sepolia.json'),
-    JSON.stringify(deploymentInfo, null, 2)
+    JSON.stringify(deploymentInfo, (_key, value) => normalizeBigInt(value), 2)
   );
   console.log('\n[*] Deployment info saved to: deployments/sepolia.json');
 }
