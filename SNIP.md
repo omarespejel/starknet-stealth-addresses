@@ -587,7 +587,7 @@ StealthRegistry and StealthAccountFactory are intentionally immutable; if a crit
 
 Stealth addresses provide **recipient unlinkability**, but stronger privacy requires **amount privacy** and **fee unlinkability**. Implementations SHOULD consider:
 
-- **Tongo** (or similar) for amount hiding so deposits/withdrawals are not linkable by value. Tongo is a confidential payments protocol on Starknet (see [tongo.cash](https://www.tongo.cash/)).
+- **Tongo** (or similar) for amount hiding for internal transfers. Tongo hides amounts for transfers between Tongo accounts using encrypted balances + ZK proofs; **fund** and **withdraw** are public ERC-20 transfers, so entry/exit amounts remain visible.
 - **Paymasters** to sponsor fees or accept non‑native fee payments, reducing links between the payer and the stealth recipient (availability depends on paymaster infrastructure).
 
 Starknet’s **native account abstraction** (all accounts are contracts) makes paymaster-style flows cleaner than ERC‑4337 on Ethereum, which relies on an `EntryPoint` contract and bundlers. Solana’s fee‑payer model allows sponsored fees but does not offer programmable account‑level validation in the same way.
@@ -598,7 +598,7 @@ Based on research from the [Umbra Anonymity Study](https://arxiv.org/abs/2308.01
 
 | Data | Visibility | Mitigation |
 |------|------------|------------|
-| **Transaction amounts** | Fully visible | Integrate with amount‑hiding protocols (e.g., Tongo) |
+| **Transaction amounts** | Visible for standard transfers | Use amount-hiding protocols; note fund/withdraw amounts remain public |
 | **Sender address** | Visible in announce tx | Use relayers |
 | **Timing** | Block timestamps visible | Recommend withdrawal delays |
 | **View tag** | 8 bits of shared secret | Accepted trade-off |
@@ -623,7 +623,7 @@ Adversaries may use the following techniques to correlate stealth payments:
 
 This protocol provides recipient unlinkability but shares the same limitations as other stealth address implementations (ERC-5564, Umbra):
 
-- **Transaction amounts remain visible**: Observers can see how much is sent to each stealth address
+- **Transaction amounts remain visible outside amount-hiding protocols**: Observers can see how much is sent to each stealth address; Tongo only hides amounts for transfers inside its system (fund/withdraw are public)
 - **Sender addresses are exposed in announcements**: The sender's address is visible in the `announce` transaction
 - **Timing correlation attacks are possible**: If recipients withdraw funds shortly after receiving, observers can correlate deposits and withdrawals
 - **Announcements can be spammed**: `announce` is permissionless; rate limits are per-caller and sybil-bypassable
@@ -750,19 +750,19 @@ This SNIP provides **recipient unlinkability** - observers cannot determine whic
 
 ### Integration with Tongo (Amount Privacy)
 
-[Tongo](https://www.tongo.cash/) is a confidential payments protocol for Starknet focused on **amount privacy** (encrypted balances + ZK proofs). It does not provide recipient unlinkability by itself; stealth addresses cover that. Sender privacy depends on pool usage and relayers.
+[Tongo](https://www.tongo.cash/) is a confidential payments protocol for Starknet focused on **amount privacy** (encrypted balances + ZK proofs). It does not provide recipient unlinkability by itself; stealth addresses cover that. Sender privacy depends on pool usage and relayers. Tongo accounts are identified by Stark curve public keys; transfers are addressed to a Tongo public key, while `fund`/`withdraw` move public ERC-20 amounts.
 
 | Privacy Property | Stealth Addresses | Tongo | Combined |
 |------------------|-------------------|-------|----------|
 | Recipient unlinkability | Yes | No | Yes |
-| Amount hiding | No | Yes | Yes |
+| Amount hiding | No | Yes (transfers only) | Yes (transfers only) |
 | Sender privacy | No | Pool/relayer-dependent | Pool/relayer-dependent |
 
-**Note:** Combining stealth addresses with Tongo yields recipient + amount privacy. Sender privacy requires relayers or other anonymity infrastructure and is out of scope for this SNIP.
+**Note:** Combining stealth addresses with Tongo yields recipient privacy and amount privacy for transfers inside Tongo. Entry/exit amounts (fund/withdraw) remain public. Sender privacy requires relayers or other anonymity infrastructure and is out of scope for this SNIP.
 
 ### Technical Integration Pattern
 
-The following pattern enables recipient + amount privacy by combining stealth addresses with Tongo (sender privacy depends on relayers/pool usage):
+The following pattern enables recipient privacy and amount privacy for transfers inside Tongo (entry/exit amounts remain public; sender privacy depends on relayers/pool usage). This assumes Tongo accounts are identified by Stark curve public keys, so the stealth public key `P` can also serve as the recipient's Tongo account identifier.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -783,30 +783,36 @@ The following pattern enables recipient + amount privacy by combining stealth ad
 │  │    - R = r*G (ephemeral public key)                           │ │
 │  │    - S = r*V (shared secret via ECDH)                         │ │
 │  │    - P = K + hash(S)*G (stealth public key)                   │ │
-│  │    - stealth_address = factory.compute_stealth_address(P)     │ │
+│  │    - view_tag = hash(S) mod 256                               │ │
+│  │    - stealth_address = factory.compute_stealth_address(       │ │
+│  │        P.x, P.y, salt)                                        │ │
 │  │                                                               │ │
-│  │ 3. Bob deposits funds into Tongo (confidential balance)        │ │
-│  │    → Amount becomes hidden                                    │ │
+│  │ 3. Bob funds Tongo (public ERC-20 amount)                      │ │
+│  │    → Amount becomes hidden only inside Tongo                  │ │
 │  │                                                               │ │
-│  │ 4. Bob transfers FROM Tongo TO stealth_address                │ │
-│  │    → Amount hidden (Tongo)                                    │ │
-│  │    → Recipient unlinkable (stealth address)                   │ │
+│  │ 4. Bob transfers within Tongo to recipient pubkey P           │ │
+│  │    → Amount hidden (Tongo transfer)                           │ │
+│  │    → Recipient unlinkable (stealth key)                       │ │
 │  │    → Sender privacy depends on relayers/pool usage            │ │
 │  │                                                               │ │
-│  │ 5. Bob calls registry.announce(scheme_id, R, stealth_address, view_tag) │ │
+│  │ 5. Bob calls registry.announce(                               │ │
+│  │    scheme_id, R.x, R.y, stealth_address, view_tag, metadata)  │ │
 │  │    → Can use relayer for sender privacy                       │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  RECEIVE (async):                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ 6. Alice scans Announcement events                            │ │
+│  │    - Compute S' = v*R                                          │ │
 │  │    - Filter by view_tag for efficiency                        │ │
-│  │    - Compute S' = v*R for matching announcements              │ │
 │  │                                                               │ │
 │  │ 7. Alice derives stealth private key: p = k + hash(S') mod n  │ │
 │  │                                                               │ │
-│  │ 8. Alice controls stealth_address with key p                  │ │
-│  │    → Can interact with any Starknet protocol                  │ │
+│  │ 8. Alice uses p as Tongo account key:                         │ │
+│  │    - Rollover pending → current balance                       │ │
+│  │    → Option A: keep/transact inside Tongo (amount hidden)     │ │
+│  │    → Option B: withdraw to stealth_address (amount public)    │ │
+│  │      (stealth_address is L2 account derived from P)           │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 └──────────────────────────────────────────────────────────────────┘
@@ -817,7 +823,7 @@ The following pattern enables recipient + amount privacy by combining stealth ad
 | Attack Vector | Protection | Mechanism |
 |---------------|------------|-----------|
 | Link recipient addresses | Stealth addresses | Each payment uses unique address |
-| Observe amounts | Tongo | Confidential balances + ZK proofs |
+| Observe amounts | Tongo (transfers only) | Confidential balances + ZK proofs; fund/withdraw public |
 | Trace sender | Relayers (optional) | Relayed announce/spend decouples sender |
 | Timing analysis | Delays + batching | Timing obfuscation |
 | Graph analysis | Privacy hygiene | Avoid consolidation; use fresh receivers |
@@ -836,7 +842,6 @@ The following pattern enables recipient + amount privacy by combining stealth ad
 - **SNIP-42**: Bech32m Address Encoding (future integration for user-friendly stealth addresses)
 - **SNIP-43**: Unified Addresses and Viewing Keys (future integration for bundled receiver types)
 - **Tongo**: Amount privacy protocol for Starknet ([tongo.cash](https://www.tongo.cash/))
-- **Aztec Network**: Full privacy L2 on Ethereum (comparable end-state goal)
 
 ## Copyright
 
