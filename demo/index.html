@@ -839,6 +839,8 @@
       schemeId: '0x0',
     };
 
+    const SEPOLIA_CHAIN_ID = '0x534e5f5345504f4c4941';
+
     // ABIs
     const REGISTRY_ABI = [
       { type: "function", name: "register_stealth_meta_address", inputs: [{ name: "spending_pubkey_x", type: "felt" }, { name: "spending_pubkey_y", type: "felt" }, { name: "viewing_pubkey_x", type: "felt" }, { name: "viewing_pubkey_y", type: "felt" }, { name: "scheme_id", type: "felt" }], outputs: [] },
@@ -861,6 +863,8 @@
     let lastDeployTxHash = null;
     let lastAnnounceTxHash = null;
     let lastAnnounceCall = null;
+    let walletChainId = null;
+    let walletOnSepolia = false;
     
     function getProvider() {
       if (account && account.provider) return account.provider;
@@ -886,14 +890,14 @@
       if (!selector) {
         throw new Error(`Unknown entrypoint: ${entrypoint}. Add selector to SELECTORS map.`);
       }
-      const result = await rpcRequest('starknet_call', {
-        request: {
+      const result = await rpcRequest('starknet_call', [
+        {
           contract_address: contractAddress,
           entry_point_selector: selector,
           calldata: calldata
         },
-        block_id: 'latest'
-      });
+        'latest'
+      ]);
       if (!Array.isArray(result) || result.length === 0) {
         throw new Error('Invalid call result');
       }
@@ -970,6 +974,11 @@
       const frac = fracPadded ? BigInt(fracPadded) : 0n;
       const amount = whole * (10n ** 18n) + frac;
       return toUint256(amount);
+    }
+
+    function parseAmountToWei(amountStr) {
+      const uint = parseAmountToUint256(amountStr);
+      return (uint.high << 128n) + uint.low;
     }
 
     function uint256ToBigInt(lowHex, highHex) {
@@ -1215,16 +1224,98 @@
       if (!badge || !warning) return;
       try {
         const chainId = await rpcRequest('starknet_chainId', []);
-        const isSepolia = chainId === '0x534e5f5345504f4c4941';
-        badge.textContent = isSepolia ? 'Sepolia Testnet' : `Chain: ${chainId}`;
-        warning.style.display = isSepolia ? 'none' : 'block';
+        const isSepolia = chainId === SEPOLIA_CHAIN_ID;
+        badge.textContent = isSepolia ? 'Sepolia Testnet' : `RPC: ${chainId}`;
+        const walletMsg = walletChainId && walletChainId !== SEPOLIA_CHAIN_ID
+          ? ` Wallet is on ${walletChainId}.`
+          : '';
+        warning.style.display = isSepolia && (!walletChainId || walletChainId === SEPOLIA_CHAIN_ID) ? 'none' : 'block';
         warning.textContent = isSepolia
-          ? ''
-          : 'Warning: RPC is not Sepolia. Demo contract addresses may be invalid.';
+          ? (walletMsg ? `Warning:${walletMsg} Switch to Sepolia to transact.` : '')
+          : `Warning: RPC is not Sepolia.${walletMsg} Demo contract addresses may be invalid.`;
       } catch (err) {
         warning.style.display = 'block';
         warning.textContent = 'Warning: Failed to detect network from RPC.';
       }
+    }
+
+    async function refreshWalletChainId() {
+      let chainId = null;
+      try {
+        if (wallet && wallet.chainId) {
+          chainId = wallet.chainId;
+        } else if (account && typeof account.getChainId === 'function') {
+          chainId = await account.getChainId();
+        } else {
+          const p = getProvider();
+          if (p && typeof p.getChainId === 'function') {
+            chainId = await p.getChainId();
+          }
+        }
+      } catch (err) {
+        console.warn('[network] Failed to read wallet chain id:', err.message);
+      }
+
+      walletChainId = chainId;
+      walletOnSepolia = chainId === SEPOLIA_CHAIN_ID;
+      applyNetworkGuard();
+      updateNetworkStatus();
+      return chainId;
+    }
+
+    function applyNetworkGuard() {
+      const enable = walletOnSepolia;
+      const registerBtn = document.getElementById('register-btn');
+      const updateBtn = document.getElementById('update-btn');
+      const fundBtn = document.getElementById('fund-btn');
+      const deployBtn = document.getElementById('deploy-btn');
+
+      if (registerBtn) registerBtn.disabled = !enable;
+      if (updateBtn) updateBtn.disabled = !enable;
+      if (fundBtn) fundBtn.disabled = !enable;
+      if (deployBtn) deployBtn.disabled = !enable || !stealthData;
+    }
+
+    async function ensureSepoliaWallet(action) {
+      const chainId = walletChainId || await refreshWalletChainId();
+      if (!chainId) {
+        alert(`Unable to detect wallet network. Please switch to Sepolia before ${action}.`);
+        return false;
+      }
+      if (chainId !== SEPOLIA_CHAIN_ID) {
+        alert(`Wallet is on ${chainId}. Please switch to Sepolia before ${action}.`);
+        return false;
+      }
+      return true;
+    }
+
+    async function getStrkBalance(address) {
+      const result = await callContract(CONFIG.strkTokenAddress, 'balanceOf', [address]);
+      if (!Array.isArray(result) || result.length < 2) {
+        throw new Error('Unexpected STRK balance response');
+      }
+      return uint256ToBigInt(result[0], result[1]);
+    }
+
+    async function ensureStrkBalance(action, minStrk = '0.01') {
+      if (!account) return true;
+      let balance = 0n;
+      try {
+        balance = await getStrkBalance(account.address);
+      } catch (err) {
+        alert(`Unable to check STRK balance before ${action}: ${err.message}`);
+        return false;
+      }
+
+      const minWei = parseAmountToWei(minStrk);
+      if (balance < minWei) {
+        alert(
+          `Insufficient STRK for ${action}. Balance: ${formatUnits(balance)} STRK. ` +
+          `Need at least ~${minStrk} STRK for fees.`
+        );
+        return false;
+      }
+      return true;
     }
 
     function resetDemo() {
@@ -1422,6 +1513,12 @@
         alert('Nothing to retry yet.');
         return;
       }
+      if (!await ensureSepoliaWallet('retrying the announcement')) {
+        return;
+      }
+      if (!await ensureStrkBalance('retrying the announcement', '0.01')) {
+        return;
+      }
       const output = document.getElementById('deploy-output');
       output.innerHTML = '<div class="status pending"><div class="spinner"></div>Submitting announcement...</div>';
       try {
@@ -1449,6 +1546,12 @@
     async function fundStealthAddress() {
       if (!account) {
         alert('Please connect your wallet first');
+        return;
+      }
+      if (!await ensureSepoliaWallet('funding the stealth address')) {
+        return;
+      }
+      if (!await ensureStrkBalance('funding the stealth address', '0.01')) {
         return;
       }
 
@@ -1774,6 +1877,7 @@
         
         setupContracts();
         updateWalletUI(walletName);
+        await refreshWalletChainId();
 
       } catch (err) {
         console.error('[wallet] Connection error:', err);
@@ -1946,13 +2050,19 @@
         </div>
       `;
 
-      document.getElementById('deploy-btn').disabled = false;
+      applyNetworkGuard();
     }
 
     // Deploy stealth account and announce
     async function deployAndAnnounce() {
       if (!account) {
         alert('Please connect your wallet first');
+        return;
+      }
+      if (!await ensureSepoliaWallet('deploying and announcing')) {
+        return;
+      }
+      if (!await ensureStrkBalance('deploying and announcing', '0.03')) {
         return;
       }
 
@@ -2097,6 +2207,12 @@
         alert('Please connect your wallet first');
         return;
       }
+      if (!await ensureSepoliaWallet('registering the meta-address')) {
+        return;
+      }
+      if (!await ensureStrkBalance('registering the meta-address', '0.01')) {
+        return;
+      }
 
       const keyX = document.getElementById('register-key-x').value;
       const keyY = document.getElementById('register-key-y').value;
@@ -2187,6 +2303,12 @@
     async function updateMetaAddress(fromRegister) {
       if (!account) {
         alert('Please connect your wallet first');
+        return;
+      }
+      if (!await ensureSepoliaWallet('updating the meta-address')) {
+        return;
+      }
+      if (!await ensureStrkBalance('updating the meta-address', '0.01')) {
         return;
       }
 
@@ -2483,6 +2605,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       initDebugPanel();
       updateNetworkStatus();
+      applyNetworkGuard();
       renderMainnetUsd();
       console.log('[init] Page loaded, wallet detection scheduled');
     });
