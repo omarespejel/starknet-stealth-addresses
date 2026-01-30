@@ -1953,26 +1953,22 @@
           walletName = 'ArgentX';
         }
 
-        // Method 1: Try get-starknet library if available
+        // Method 1: Prefer get-starknet modal for auto selection
         if (!selectedWallet && typeof getStarknet !== 'undefined' && getStarknet.connect) {
           console.log('[wallet] Using get-starknet library...');
-          try {
-            selectedWallet = await getStarknet.connect({
-              modalMode: 'alwaysAsk',
-              modalTheme: 'dark'
-            });
-            if (selectedWallet) {
-              walletName = selectedWallet.name || 'Wallet';
-              console.log('[wallet] get-starknet connected:', walletName);
-            }
-          } catch (gsErr) {
-            console.log('[wallet] get-starknet failed, trying direct connection:', gsErr.message);
+          selectedWallet = await getStarknet.connect({
+            modalMode: 'alwaysAsk',
+            modalTheme: 'dark'
+          });
+          if (selectedWallet) {
+            walletName = selectedWallet.name || 'Wallet';
+            console.log('[wallet] get-starknet connected:', walletName);
           }
         }
         
-        // Method 2: Fall back to direct wallet connection
-        if (!selectedWallet) {
-          console.log('[wallet] Trying direct wallet connection...');
+        // Method 2: Fall back to direct wallet connection only if get-starknet is unavailable
+        if (!selectedWallet && (typeof getStarknet === 'undefined' || !getStarknet.connect)) {
+          console.log('[wallet] get-starknet unavailable, trying direct wallet connection...');
           
           // Try Braavos first
           if (window.starknet_braavos) {
