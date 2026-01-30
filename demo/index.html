@@ -59,6 +59,23 @@
 
     .wallet-info { font-size: 0.8rem; }
     .wallet-address { color: #4ade80; font-size: 0.75rem; margin-top: 0.25rem; }
+
+    .wallet-select-label {
+      display: block;
+      margin-top: 0.5rem;
+      color: #666;
+      font-size: 0.7rem;
+    }
+
+    .wallet-select {
+      margin-top: 0.25rem;
+      background: #0a0a0a;
+      border: 1px solid #222;
+      color: #ddd;
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.75rem;
+    }
     
     .connect-btn {
       background: #4ade80;
@@ -455,6 +472,12 @@
       <div class="wallet-info">
         <div id="wallet-status">Connect your wallet to interact with contracts</div>
         <div id="wallet-address" class="wallet-address"></div>
+        <label class="wallet-select-label" for="wallet-preference">Wallet preference</label>
+        <select id="wallet-preference" class="wallet-select">
+          <option value="auto">Auto (show chooser if available)</option>
+          <option value="argentx">ArgentX</option>
+          <option value="braavos">Braavos</option>
+        </select>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button id="connect-btn" class="connect-btn" onclick="connectWallet()">
@@ -1901,6 +1924,8 @@
     // Wallet connection - try get-starknet first, fall back to direct connection
     async function connectWallet() {
       const btn = document.getElementById('connect-btn');
+      const preferenceEl = document.getElementById('wallet-preference');
+      const preference = preferenceEl ? preferenceEl.value : 'auto';
       btn.disabled = true;
       btn.textContent = 'Connecting...';
 
@@ -1910,8 +1935,26 @@
         let selectedWallet = null;
         let walletName = 'Wallet';
         
+        if (preference === 'braavos') {
+          if (!window.starknet_braavos) {
+            throw new Error('Braavos wallet not detected in this browser.');
+          }
+          console.log('[wallet] Preference: Braavos');
+          await window.starknet_braavos.enable();
+          selectedWallet = window.starknet_braavos;
+          walletName = 'Braavos';
+        } else if (preference === 'argentx') {
+          if (!window.starknet_argentX) {
+            throw new Error('ArgentX wallet not detected in this browser.');
+          }
+          console.log('[wallet] Preference: ArgentX');
+          await window.starknet_argentX.enable();
+          selectedWallet = window.starknet_argentX;
+          walletName = 'ArgentX';
+        }
+
         // Method 1: Try get-starknet library if available
-        if (typeof getStarknet !== 'undefined' && getStarknet.connect) {
+        if (!selectedWallet && typeof getStarknet !== 'undefined' && getStarknet.connect) {
           console.log('[wallet] Using get-starknet library...');
           try {
             selectedWallet = await getStarknet.connect({
