@@ -760,6 +760,12 @@ This SNIP provides **recipient unlinkability** - observers cannot determine whic
 
 **Note:** Combining stealth addresses with Tongo yields recipient privacy and amount privacy for transfers inside Tongo. Entry/exit amounts (fund/withdraw) remain public. Sender privacy requires relayers or other anonymity infrastructure and is out of scope for this SNIP.
 
+**Operational detail:** Tongo maintains **pending** and **current** encrypted balances. Transfers credit the recipient’s pending balance; the recipient must call `rollover` to move pending → current before spending.
+
+**Caller‑bound proofs:** Tongo binds proofs to `chain_id`, the Tongo contract address, and the **caller address** via a prefix. This prevents replay and means paymaster/relayer flows must generate proofs for the relayer’s caller address (the relayer is the transaction sender).
+
+**Compliance hooks:** When an auditor key is enabled, Tongo emits balance/transfer declaration events for optional auditability. This maps cleanly to viewing‑key or regulated‑disclosure extensions without changing the stealth flow.
+
 ### Technical Integration Pattern
 
 The following pattern enables recipient privacy and amount privacy for transfers inside Tongo (entry/exit amounts remain public; sender privacy depends on relayers/pool usage). This assumes Tongo accounts are identified by Stark curve public keys, so the stealth public key `P` can also serve as the recipient's Tongo account identifier.

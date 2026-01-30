@@ -518,6 +518,22 @@
         </div>
       </div>
 
+      <div class="info-box" style="margin-top: 0; margin-bottom: 1.25rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" id="tongo-toggle" onchange="toggleTongoNote()" style="margin: 0;">
+          <span>Send via Tongo (optional amount privacy)</span>
+        </label>
+        <div id="tongo-note" style="display: none; margin-top: 0.75rem; color: #cbd5e1;">
+          <div style="margin-bottom: 0.35rem;"><strong>Tongo flow notes:</strong></div>
+          <ul style="margin: 0.35rem 0 0 1rem; padding: 0;">
+            <li>Fund/withdraw are public ERC-20 amounts (entry/exit visible).</li>
+            <li>Transfers inside Tongo are amount-private via encrypted balances + ZK proofs.</li>
+            <li>Transfers credit a pending balance; the recipient must call rollover to spend.</li>
+          </ul>
+          <div style="margin-top: 0.5rem; color: #93c5fd;">This demo does not execute Tongo transactions.</div>
+        </div>
+      </div>
+
       <!-- Step 1: Get recipient meta-address -->
       <div class="step" id="step-1">
         <div class="step-header">
@@ -580,7 +596,7 @@
           <span class="step-number">4</span>
           <span class="step-title">Fund the Stealth Address</span>
         </div>
-        <p class="step-desc">Send STRK to the stealth address so the recipient can use it.</p>
+        <p class="step-desc">Send STRK to the stealth address so the recipient can use it. (Optional: a paymaster can cover fees to make this step smoother.)</p>
         
         <div class="input-group">
           <div class="input-label">Stealth Address (copy this)</div>
@@ -1418,6 +1434,11 @@
       const step4 = document.getElementById('step-4');
       if (step4) step4.style.display = 'none';
 
+      const tongoToggle = document.getElementById('tongo-toggle');
+      if (tongoToggle) tongoToggle.checked = false;
+      const tongoNote = document.getElementById('tongo-note');
+      if (tongoNote) tongoNote.style.display = 'none';
+
       const outputs = [
         'lookup-output',
         'stealth-output',
@@ -1537,6 +1558,8 @@
           <strong>Next: Fund the stealth address!</strong>
           <br><br>
           The account is deployed but has no balance. Send STRK to complete the payment.
+          <br><br>
+          <strong>Note:</strong> A paymaster can sponsor fees here to simplify UX and reduce fee-linkability.
           <br><br>
           <strong>View Tag:</strong> ${stealthData ? stealthData.viewTag : ''}
         </div>
@@ -1720,6 +1743,13 @@
 
     function showTab(tab) {
       selectTab(tab);
+    }
+
+    function toggleTongoNote() {
+      const toggle = document.getElementById('tongo-toggle');
+      const note = document.getElementById('tongo-note');
+      if (!toggle || !note) return;
+      note.style.display = toggle.checked ? 'block' : 'none';
     }
 
     // Math helpers
