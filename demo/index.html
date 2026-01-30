@@ -445,6 +445,8 @@
       </button>
     </div>
 
+    <div id="pre-tx-warning" class="network-warning" style="display: none;"></div>
+
     <div style="margin-bottom: 0.5rem;">
       <button id="debug-toggle" class="link-button" onclick="toggleDebugPanel()">Show Wallet Debug</button>
       <button class="link-button" onclick="resetDemo()" style="margin-left: 0.75rem;">Reset Demo</button>
@@ -1235,6 +1237,7 @@
     async function updateNetworkStatus() {
       const badge = document.getElementById('network-badge');
       const warning = document.getElementById('network-warning');
+      const preTxWarning = document.getElementById('pre-tx-warning');
       if (!badge || !warning) return;
       try {
         const chainId = await rpcRequest('starknet_chainId', []);
@@ -1244,13 +1247,22 @@
         const walletMsg = walletChainId && !SEPOLIA_CHAIN_IDS.has(walletChainId)
           ? ` Wallet is on ${walletChainId}.`
           : '';
-        warning.style.display = isSepolia && (!walletChainId || SEPOLIA_CHAIN_IDS.has(walletChainId)) ? 'none' : 'block';
+        const showWarning = !(isSepolia && (!walletChainId || SEPOLIA_CHAIN_IDS.has(walletChainId)));
+        warning.style.display = showWarning ? 'block' : 'none';
         warning.textContent = isSepolia
-          ? (walletMsg ? `Warning:${walletMsg} Transactions are disabled until Sepolia is selected.` : '')
-          : `Warning: RPC is not Sepolia.${walletMsg} Transactions are disabled until Sepolia is selected.`;
+          ? (walletMsg ? `Warning:${walletMsg} Transactions are disabled until Sepolia is selected. Switch before any on-chain step.` : '')
+          : `Warning: RPC is not Sepolia.${walletMsg} Transactions are disabled until Sepolia is selected. Switch before any on-chain step.`;
+        if (preTxWarning) {
+          preTxWarning.style.display = showWarning ? 'block' : 'none';
+          preTxWarning.textContent = warning.textContent;
+        }
       } catch (err) {
         warning.style.display = 'block';
         warning.textContent = 'Warning: Failed to detect network from RPC.';
+        if (preTxWarning) {
+          preTxWarning.style.display = 'block';
+          preTxWarning.textContent = warning.textContent;
+        }
       }
     }
 
