@@ -2522,12 +2522,14 @@
           <div class="divider"></div>
         `;
 
-        relevant.forEach((ev, idx) => {
+        for (let idx = 0; idx < relevant.length; idx += 1) {
+          const ev = relevant[idx];
           const data = ev.data || [];
           const keys = ev.keys || [];
           const ephemeralX = data[0];
           const ephemeralY = data[1];
-          const stealthAddress = data[2];
+          const stealthAddressRaw = data[2];
+          const stealthAddress = normalizeAddress(stealthAddressRaw);
           const schemeIdOnChain = keys[1] ? BigInt(keys[1]) : null;
           const viewTagOnChain = keys[2] ? Number(BigInt(keys[2]) % 256n) : null;
           const expectedSchemeId = BigInt(CONFIG.schemeId);
@@ -2561,15 +2563,26 @@
               <div>TX: <a href="https://sepolia.starkscan.co/tx/${ev.transaction_hash}" target="_blank" class="tx-link">${truncate(ev.transaction_hash)}</a></div>
             </div>
           `;
-        });
+        }
 
         if (relevant.length === 0) {
           html += `<div style="color: #888; font-size: 0.7rem;">No announcement events found yet.</div>`;
         }
 
         if (matches.length > 0) {
+          const enrichedMatches = await Promise.all(matches.map(async (m) => {
+            let balance = null;
+            let balanceText = 'n/a';
+            try {
+              balance = await getStrkBalance(normalizeAddress(m.stealthAddress));
+              balanceText = `${formatUnits(balance)} STRK`;
+            } catch (err) {
+              console.warn('[scan] balance lookup failed:', err.message);
+            }
+            return { ...m, balance, balanceText, hasFunds: balance ? balance > 0n : false };
+          }));
           let matchRows = '';
-          matches.forEach((m, i) => {
+          enrichedMatches.forEach((m, i) => {
             matchRows += `
               <div class="output-row">
                 <span class="output-label">Match ${i + 1} TX:</span>
@@ -2580,6 +2593,10 @@
                 <span class="output-value">${truncate(m.stealthAddress)}</span>
               </div>
               <div class="output-row">
+                <span class="output-label">Balance:</span>
+                <span class="output-value">${m.balanceText}</span>
+              </div>
+              <div class="output-row">
                 <span class="output-label">Stealth Private Key:</span>
                 <span class="output-value">${truncate(toHex(m.stealthPriv))}</span>
               </div>
@@ -2587,13 +2604,15 @@
             `;
           });
 
-          lastMatches = matches;
+          lastMatches = enrichedMatches;
 
           html += `
             <div class="divider"></div>
-            <div class="milestone">Milestone reached: matching stealth payment detected.</div>
+            <div class="milestone">Milestone reached: this announcement belongs to you.</div>
             <div class="info-box">
               ${matches.length} matching announcement(s) found.
+              <div class="divider"></div>
+              <strong>What this means:</strong> you control the stealth account(s) listed below. If the balance is 0, the sender has not funded yet. If balance &gt; 0, you can spend using the derived stealth private key (outside this demo).
               <div class="divider"></div>
               ${matchRows}
               <div style="color: #fca5a5; font-size: 0.7rem;">
