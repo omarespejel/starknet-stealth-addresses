@@ -839,7 +839,14 @@
       schemeId: '0x0',
     };
 
-    const SEPOLIA_CHAIN_ID = '0x534e5f5345504f4c4941';
+    const SEPOLIA_CHAIN_IDS = new Set([
+      '0x534e5f5345504f4c4941', // SN_SEPOLIA
+      'SN_SEPOLIA'
+    ]);
+    const MAINNET_CHAIN_IDS = new Set([
+      '0x534e5f4d41494e', // SN_MAIN
+      'SN_MAIN'
+    ]);
 
     // ABIs
     const REGISTRY_ABI = [
@@ -1224,12 +1231,13 @@
       if (!badge || !warning) return;
       try {
         const chainId = await rpcRequest('starknet_chainId', []);
-        const isSepolia = chainId === SEPOLIA_CHAIN_ID;
-        badge.textContent = isSepolia ? 'Sepolia Testnet' : `RPC: ${chainId}`;
-        const walletMsg = walletChainId && walletChainId !== SEPOLIA_CHAIN_ID
+        const normalizedRpc = normalizeChainId(chainId);
+        const isSepolia = normalizedRpc && SEPOLIA_CHAIN_IDS.has(normalizedRpc);
+        badge.textContent = isSepolia ? 'Sepolia Testnet' : `RPC: ${normalizedRpc || chainId}`;
+        const walletMsg = walletChainId && !SEPOLIA_CHAIN_IDS.has(walletChainId)
           ? ` Wallet is on ${walletChainId}.`
           : '';
-        warning.style.display = isSepolia && (!walletChainId || walletChainId === SEPOLIA_CHAIN_ID) ? 'none' : 'block';
+        warning.style.display = isSepolia && (!walletChainId || SEPOLIA_CHAIN_IDS.has(walletChainId)) ? 'none' : 'block';
         warning.textContent = isSepolia
           ? (walletMsg ? `Warning:${walletMsg} Switch to Sepolia to transact.` : '')
           : `Warning: RPC is not Sepolia.${walletMsg} Demo contract addresses may be invalid.`;
@@ -1237,6 +1245,27 @@
         warning.style.display = 'block';
         warning.textContent = 'Warning: Failed to detect network from RPC.';
       }
+    }
+
+    function normalizeChainId(chainId) {
+      if (!chainId) return null;
+      if (typeof chainId === 'bigint') {
+        return `0x${chainId.toString(16)}`.toLowerCase();
+      }
+      if (typeof chainId === 'number') {
+        return `0x${chainId.toString(16)}`.toLowerCase();
+      }
+      if (typeof chainId === 'string') {
+        const trimmed = chainId.trim();
+        if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+          return trimmed.toLowerCase();
+        }
+        if (/^\d+$/.test(trimmed)) {
+          return `0x${BigInt(trimmed).toString(16)}`.toLowerCase();
+        }
+        return trimmed.toUpperCase();
+      }
+      return null;
     }
 
     async function refreshWalletChainId() {
@@ -1256,11 +1285,12 @@
         console.warn('[network] Failed to read wallet chain id:', err.message);
       }
 
-      walletChainId = chainId;
-      walletOnSepolia = chainId === SEPOLIA_CHAIN_ID;
+      const normalized = normalizeChainId(chainId);
+      walletChainId = normalized || chainId;
+      walletOnSepolia = normalized ? SEPOLIA_CHAIN_IDS.has(normalized) : false;
       applyNetworkGuard();
       updateNetworkStatus();
-      return chainId;
+      return normalized || chainId;
     }
 
     function applyNetworkGuard() {
@@ -1282,8 +1312,10 @@
         alert(`Unable to detect wallet network. Please switch to Sepolia before ${action}.`);
         return false;
       }
-      if (chainId !== SEPOLIA_CHAIN_ID) {
-        alert(`Wallet is on ${chainId}. Please switch to Sepolia before ${action}.`);
+      const normalized = normalizeChainId(chainId) || chainId;
+      if (!SEPOLIA_CHAIN_IDS.has(normalized)) {
+        const label = MAINNET_CHAIN_IDS.has(normalized) ? 'mainnet' : normalized;
+        alert(`Wallet is on ${label}. Please switch to Sepolia before ${action}.`);
         return false;
       }
       return true;
