@@ -220,9 +220,15 @@
     .status.error { background: #3a1a1a; color: #f87171; }
 
     .network-warning {
-      margin-top: 0.5rem;
-      font-size: 0.75rem;
-      color: #f87171;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fecaca;
+      background: #3a1a1a;
+      border: 1px solid #7f1d1d;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      text-align: center;
     }
 
     .info-panel {
@@ -872,6 +878,7 @@
     let lastAnnounceCall = null;
     let walletChainId = null;
     let walletOnSepolia = false;
+    let chainWatcher = null;
     
     function getProvider() {
       if (account && account.provider) return account.provider;
@@ -1239,8 +1246,8 @@
           : '';
         warning.style.display = isSepolia && (!walletChainId || SEPOLIA_CHAIN_IDS.has(walletChainId)) ? 'none' : 'block';
         warning.textContent = isSepolia
-          ? (walletMsg ? `Warning:${walletMsg} Switch to Sepolia to transact.` : '')
-          : `Warning: RPC is not Sepolia.${walletMsg} Demo contract addresses may be invalid.`;
+          ? (walletMsg ? `Warning:${walletMsg} Transactions are disabled until Sepolia is selected.` : '')
+          : `Warning: RPC is not Sepolia.${walletMsg} Transactions are disabled until Sepolia is selected.`;
       } catch (err) {
         warning.style.display = 'block';
         warning.textContent = 'Warning: Failed to detect network from RPC.';
@@ -1291,6 +1298,15 @@
       applyNetworkGuard();
       updateNetworkStatus();
       return normalized || chainId;
+    }
+
+    function startChainWatcher() {
+      if (chainWatcher) return;
+      chainWatcher = setInterval(() => {
+        if (wallet) {
+          refreshWalletChainId();
+        }
+      }, 3000);
     }
 
     function applyNetworkGuard() {
@@ -1910,6 +1926,16 @@
         setupContracts();
         updateWalletUI(walletName);
         await refreshWalletChainId();
+        startChainWatcher();
+        if (wallet && typeof wallet.on === 'function') {
+          try {
+            wallet.on('networkChanged', refreshWalletChainId);
+            wallet.on('chainChanged', refreshWalletChainId);
+            wallet.on('accountsChanged', refreshWalletChainId);
+          } catch (err) {
+            console.warn('[wallet] Failed to attach network listeners:', err.message);
+          }
+        }
 
       } catch (err) {
         console.error('[wallet] Connection error:', err);
@@ -2640,6 +2666,10 @@
       applyNetworkGuard();
       renderMainnetUsd();
       console.log('[init] Page loaded, wallet detection scheduled');
+    });
+
+    window.addEventListener('focus', () => {
+      refreshWalletChainId();
     });
   </script>
 </body>
