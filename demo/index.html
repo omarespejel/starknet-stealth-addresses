@@ -1701,6 +1701,7 @@
     // Crypto constants
     const CURVE_ORDER = BigInt('0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f');
     const FIELD_PRIME = BigInt('0x800000000000011000000000000000000000000000000000000000000000001');
+    const FIELD_HALF = (FIELD_PRIME - 1n) / 2n;
     const G = {
       x: BigInt('0x1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca'),
       y: BigInt('0x5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1f')
@@ -1767,6 +1768,22 @@
       return result;
     }
 
+    function normalizePoint(point) {
+      if (!point) return point;
+      if (point.y > FIELD_HALF) {
+        return { x: point.x, y: FIELD_PRIME - point.y };
+      }
+      return point;
+    }
+
+    function normalizePrivateKey(privateKey) {
+      const pub = pointMul(privateKey, G);
+      if (pub && pub.y > FIELD_HALF) {
+        return mod(CURVE_ORDER - privateKey, CURVE_ORDER);
+      }
+      return privateKey;
+    }
+
     function simpleHash(x, y) {
       let h = mod(x * BigInt('0x123456789abcdef') + y, FIELD_PRIME);
       h = mod(h * h + x, FIELD_PRIME);
@@ -1778,11 +1795,12 @@
       const bytes = new Uint8Array(32);
       crypto.getRandomValues(bytes);
       let key = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
-      return mod(key, CURVE_ORDER - 1n) + 1n;
+      key = mod(key, CURVE_ORDER - 1n) + 1n;
+      return normalizePrivateKey(key);
     }
 
     function getPublicKey(privateKey) {
-      return pointMul(privateKey, G);
+      return normalizePoint(pointMul(privateKey, G));
     }
 
     function toHex(n) {
@@ -2055,7 +2073,7 @@
         return;
       }
 
-      const recipientPub = { x: fromHex(keyX), y: fromHex(keyY) };
+      const recipientPub = normalizePoint({ x: fromHex(keyX), y: fromHex(keyY) });
 
       // Generate ephemeral key
       const ephemeralPriv = generatePrivateKey();
@@ -2069,7 +2087,7 @@
 
       // Compute stealth public key
       const hashPoint = pointMul(hashS, G);
-      const stealthPub = pointAdd(recipientPub, hashPoint);
+      const stealthPub = normalizePoint(pointAdd(recipientPub, hashPoint));
 
       // Compute view tag
       const viewTag = Number(hashS % 256n);
@@ -2515,14 +2533,14 @@
           const expectedSchemeId = BigInt(CONFIG.schemeId);
           const schemeMatches = schemeIdOnChain === null || schemeIdOnChain === expectedSchemeId;
 
-          const ephemPoint = { x: fromHex(ephemeralX), y: fromHex(ephemeralY) };
+          const ephemPoint = normalizePoint({ x: fromHex(ephemeralX), y: fromHex(ephemeralY) });
           const sharedSecret = pointMul(privateKey, ephemPoint);
           const hashS = mod(simpleHash(sharedSecret.x, sharedSecret.y), CURVE_ORDER);
           const computedViewTag = Number(hashS % 256n);
 
           const isMatch = schemeMatches && (viewTagOnChain !== null) && (computedViewTag === viewTagOnChain);
           if (isMatch) {
-            const stealthPriv = mod(privateKey + hashS, CURVE_ORDER);
+            const stealthPriv = normalizePrivateKey(mod(privateKey + hashS, CURVE_ORDER));
             matches.push({
               txHash: ev.transaction_hash,
               index: data[4],
