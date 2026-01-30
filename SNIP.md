@@ -175,6 +175,7 @@ announce(scheme_id, R.x, R.y, stealth_address, view_tag, metadata)
 ```
 
 Senders MUST use the `scheme_id` from the recipient's meta-address when announcing.
+Senders MAY announce before deployment; multicall or back‑to‑back deploy + announce is recommended to reduce timing linkage.
 
 **3. Recipient Scans and Recovers**
 
@@ -410,16 +411,23 @@ For a recipient scanning 10,000 announcements:
 Stealth account addresses are computed using Starknet's standard contract address formula:
 
 ```
-address = pedersen(
+constructor_calldata_hash = pedersen(pedersen(pedersen(0, pubkey_x), pubkey_y), 2)
+
+address_hash = pedersen(
     pedersen(
         pedersen(
-            pedersen(CONTRACT_ADDRESS_PREFIX, deployer),
+            pedersen(
+                pedersen(0, CONTRACT_ADDRESS_PREFIX),
+                deployer
+            ),
             salt
         ),
         class_hash
     ),
     constructor_calldata_hash
-) mod 2^251
+)
+
+address = pedersen(address_hash, 5) mod 2^251
 ```
 
 Where:
@@ -427,7 +435,7 @@ Where:
 - `deployer` = factory contract address
 - `salt` = user-provided salt (typically derived from ephemeral key)
 - `class_hash` = StealthAccount class hash
-- `constructor_calldata_hash` = `pedersen(pedersen(0, pubkey_x), pubkey_y)`
+- `constructor_calldata_hash` = `compute_hash_on_elements([pubkey_x, pubkey_y])` (includes length)
 
 Senders SHOULD set `salt = poseidon(R.x, R.y)` for deterministic pre-computation.
 
@@ -566,6 +574,7 @@ Public key validation uses a defense-in-depth approach:
 This approach is used by OpenZeppelin Cairo contracts and relies on Starknet's native, audited ECDSA implementation rather than custom curve checks.
 
 Implementations MAY optionally enable full on-curve checks during registration/announcement at the cost of higher gas.
+This implementation enables strict on-curve validation by default (`STRICT_CURVE_CHECK = true`).
 
 ### X-Only Signature Binding
 

@@ -76,6 +76,22 @@
     .connect-btn:hover { background: #86efac; }
     .connect-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
 
+    .disconnect-btn {
+      background: #7f1d1d;
+      color: #fecaca;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .disconnect-btn:hover { background: #991b1b; }
+    .disconnect-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+
     .link-button {
       background: transparent;
       border: none;
@@ -440,9 +456,14 @@
         <div id="wallet-status">Connect your wallet to interact with contracts</div>
         <div id="wallet-address" class="wallet-address"></div>
       </div>
-      <button id="connect-btn" class="connect-btn" onclick="connectWallet()">
-        Connect Wallet
-      </button>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="connect-btn" class="connect-btn" onclick="connectWallet()">
+          Connect Wallet
+        </button>
+        <button id="disconnect-btn" class="disconnect-btn" onclick="disconnectWallet()" disabled>
+          Disconnect
+        </button>
+      </div>
     </div>
 
     <div id="pre-tx-warning" class="network-warning" style="display: none;"></div>
@@ -1337,6 +1358,12 @@
       }, 3000);
     }
 
+    function stopChainWatcher() {
+      if (!chainWatcher) return;
+      clearInterval(chainWatcher);
+      chainWatcher = null;
+    }
+
     function applyNetworkGuard() {
       const enable = walletOnSepolia;
       const registerBtn = document.getElementById('register-btn');
@@ -2025,6 +2052,7 @@
 
     function updateWalletUI(walletName) {
       const btn = document.getElementById('connect-btn');
+      const disconnectBtn = document.getElementById('disconnect-btn');
       const displayAddress = account.address;
       document.getElementById('wallet-status').textContent = walletName + ' Connected';
       document.getElementById('wallet-address').textContent = truncate(displayAddress, 16);
@@ -2035,6 +2063,33 @@
       btn.textContent = 'Connected';
       btn.style.background = '#1a3a1a';
       btn.style.color = '#4ade80';
+      btn.disabled = true;
+      if (disconnectBtn) disconnectBtn.disabled = false;
+    }
+
+    function resetWalletUI() {
+      const btn = document.getElementById('connect-btn');
+      const disconnectBtn = document.getElementById('disconnect-btn');
+      document.getElementById('wallet-status').textContent = 'Connect your wallet to interact with contracts';
+      document.getElementById('wallet-address').textContent = '';
+      btn.textContent = 'Connect Wallet';
+      btn.style.background = '#4ade80';
+      btn.style.color = '#000';
+      btn.disabled = false;
+      if (disconnectBtn) disconnectBtn.disabled = true;
+    }
+
+    function disconnectWallet() {
+      wallet = null;
+      account = null;
+      provider = null;
+      walletChainId = null;
+      walletOnSepolia = false;
+      stopChainWatcher();
+      resetWalletUI();
+      applyNetworkGuard();
+      updateNetworkStatus();
+      alert('Disconnected locally. If you want to fully revoke access, disconnect this site in your wallet extension.');
     }
 
     // Lookup meta-address from registry

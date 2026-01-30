@@ -239,14 +239,15 @@ Run the full flow locally: deploy contracts, register a meta-address, announce, 
 ## Privacy Stack: Integration with Tongo
 
 Stealth addresses and [Tongo](https://www.tongo.cash/) are complementary: stealth addresses hide recipients, while Tongo hides **amounts**.
+Note: Tongo hides amounts for transfers inside the pool; `fund`/`withdraw` amounts are public at entry/exit.
 
 ### What Each Provides
 
 | Component | Privacy Property | What's Hidden |
 |-----------|------------------|---------------|
-| **Stealth Addresses** | Recipient unlinkability | Who receives funds |
-| **Tongo** | Amount privacy | How much is transferred |
-| **Combined** | Recipient + amount privacy | Recipient and amount (sender privacy requires relayers/pools) |
+| **Stealth Addresses** | Recipient unlinkability | Recipient linkage (amounts + sender still public) |
+| **Tongo** | Amount privacy (transfers only) | Transfer amounts inside Tongo (fund/withdraw public) |
+| **Combined** | Recipient unlinkability + transfer amount privacy | Recipient linkage + transfer amounts (entry/exit + sender still public) |
 
 ### Privacy Comparison
 
