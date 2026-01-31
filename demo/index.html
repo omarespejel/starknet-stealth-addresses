@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Starknet Stealth Addresses</title>
-  <script src="https://cdn.jsdelivr.net/npm/get-starknet@3.0.1/dist/index.global.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
@@ -60,23 +59,6 @@
     .wallet-info { font-size: 0.8rem; }
     .wallet-address { color: #4ade80; font-size: 0.75rem; margin-top: 0.25rem; }
 
-    .wallet-select-label {
-      display: block;
-      margin-top: 0.5rem;
-      color: #666;
-      font-size: 0.7rem;
-    }
-
-    .wallet-select {
-      margin-top: 0.25rem;
-      background: #0a0a0a;
-      border: 1px solid #222;
-      color: #ddd;
-      border-radius: 4px;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.75rem;
-    }
-    
     .connect-btn {
       background: #4ade80;
       color: #000;
@@ -472,12 +454,6 @@
       <div class="wallet-info">
         <div id="wallet-status">Connect your wallet to interact with contracts</div>
         <div id="wallet-address" class="wallet-address"></div>
-        <label class="wallet-select-label" for="wallet-preference">Wallet preference</label>
-        <select id="wallet-preference" class="wallet-select">
-          <option value="auto">Auto (show chooser if available)</option>
-          <option value="argentx">ArgentX</option>
-          <option value="braavos">Braavos</option>
-        </select>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button id="connect-btn" class="connect-btn" onclick="connectWallet()">
@@ -1028,6 +1004,58 @@
       }
 
       return starknetJsPromise;
+    }
+
+    const GET_STARKNET_VERSION = '4.0.8';
+    let getStarknetUiPromise = null;
+    async function getStarknetUi() {
+      if (window.__getStarknetUi && window.__getStarknetUi.connect) {
+        return window.__getStarknetUi;
+      }
+      if (window.getStarknet && window.getStarknet.connect) {
+        return window.getStarknet;
+      }
+      if (!getStarknetUiPromise) {
+        const url = `https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@${GET_STARKNET_VERSION}/dist/ui.js`;
+        getStarknetUiPromise = import(url)
+          .then((mod) => {
+            const api = (mod && mod.connect) ? mod : (mod && mod.default ? mod.default : null);
+            if (!api || !api.connect) {
+              throw new Error('get-starknet UI module missing connect()');
+            }
+            window.__getStarknetUi = api;
+            return api;
+          })
+          .catch((err) => {
+            console.warn('[wallet] Failed to load get-starknet UI:', err);
+            return null;
+          });
+      }
+      return getStarknetUiPromise;
+    }
+
+    let getStarknetCorePromise = null;
+    async function getStarknetCore() {
+      if (window.__getStarknetCore && window.__getStarknetCore.getAvailableWallets) {
+        return window.__getStarknetCore;
+      }
+      if (!getStarknetCorePromise) {
+        const url = `https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet-core@${GET_STARKNET_VERSION}/dist/core.js`;
+        getStarknetCorePromise = import(url)
+          .then((mod) => {
+            const api = (mod && mod.getAvailableWallets) ? mod : (mod && mod.default ? mod.default : null);
+            if (!api || !api.getAvailableWallets) {
+              throw new Error('get-starknet core module missing getAvailableWallets()');
+            }
+            window.__getStarknetCore = api;
+            return api;
+          })
+          .catch((err) => {
+            console.warn('[wallet] Failed to load get-starknet core:', err);
+            return null;
+          });
+      }
+      return getStarknetCorePromise;
     }
 
     function toUint256(amount) {
@@ -1924,53 +1952,41 @@
     // Wallet connection - try get-starknet first, fall back to direct connection
     async function connectWallet() {
       const btn = document.getElementById('connect-btn');
-      const preferenceEl = document.getElementById('wallet-preference');
-      const preference = preferenceEl ? preferenceEl.value : 'auto';
       btn.disabled = true;
       btn.textContent = 'Connecting...';
 
       try {
         console.log('[wallet] Starting wallet connection...');
-        
+
         let selectedWallet = null;
         let walletName = 'Wallet';
-        
-        if (preference === 'braavos') {
-          if (!window.starknet_braavos) {
-            throw new Error('Braavos wallet not detected in this browser.');
-          }
-          console.log('[wallet] Preference: Braavos');
-          await window.starknet_braavos.enable();
-          selectedWallet = window.starknet_braavos;
-          walletName = 'Braavos';
-        } else if (preference === 'argentx') {
-          if (!window.starknet_argentX) {
-            throw new Error('ArgentX wallet not detected in this browser.');
-          }
-          console.log('[wallet] Preference: ArgentX');
-          await window.starknet_argentX.enable();
-          selectedWallet = window.starknet_argentX;
-          walletName = 'ArgentX';
-        }
 
-        // Method 1: Prefer get-starknet modal for auto selection
-        if (!selectedWallet && typeof getStarknet !== 'undefined' && getStarknet.connect) {
-          console.log('[wallet] Using get-starknet library...');
-          selectedWallet = await getStarknet.connect({
+        const ui = await getStarknetUi();
+        const core = await getStarknetCore();
+
+        // Primary: modern get-starknet UI modal
+        if (!selectedWallet && ui && ui.connect) {
+          console.log('[wallet] Using get-starknet UI modal...');
+          selectedWallet = await ui.connect({
             modalMode: 'alwaysAsk',
             modalTheme: 'dark'
           });
+          if (selectedWallet === null) {
+            console.log('[wallet] User cancelled wallet selection');
+            btn.disabled = false;
+            btn.textContent = 'Connect Wallet';
+            return;
+          }
           if (selectedWallet) {
             walletName = selectedWallet.name || 'Wallet';
             console.log('[wallet] get-starknet connected:', walletName);
           }
         }
-        
-        // Method 2: Fall back to direct wallet connection only if get-starknet is unavailable
-        if (!selectedWallet && (typeof getStarknet === 'undefined' || !getStarknet.connect)) {
+
+        // Fallback: direct wallet objects if get-starknet failed to load
+        if (!selectedWallet) {
           console.log('[wallet] get-starknet unavailable, trying direct wallet connection...');
-          
-          // Try Braavos first
+
           if (window.starknet_braavos) {
             console.log('[wallet] Found Braavos, connecting...');
             try {
@@ -1982,8 +1998,7 @@
               console.log('[wallet] Braavos enable failed:', e.message);
             }
           }
-          
-          // Try ArgentX if Braavos didn't work
+
           if (!selectedWallet && window.starknet_argentX) {
             console.log('[wallet] Found ArgentX, connecting...');
             try {
@@ -1995,8 +2010,7 @@
               console.log('[wallet] ArgentX enable failed:', e.message);
             }
           }
-          
-          // Try generic starknet object (if it's actually a wallet)
+
           if (!selectedWallet && window.starknet && window.starknet.enable) {
             console.log('[wallet] Found generic starknet wallet, connecting...');
             try {
@@ -2013,14 +2027,6 @@
         // Check if we got a wallet
         if (!selectedWallet) {
           throw new Error('No wallet found. Please install ArgentX or Braavos extension.');
-        }
-        
-        // User cancelled
-        if (selectedWallet === null) {
-          console.log('[wallet] User cancelled wallet selection');
-          btn.disabled = false;
-          btn.textContent = 'Connect Wallet';
-          return;
         }
         
         console.log('[wallet] Wallet state:', {
@@ -2118,7 +2124,15 @@
       if (disconnectBtn) disconnectBtn.disabled = true;
     }
 
-    function disconnectWallet() {
+    async function disconnectWallet() {
+      try {
+        const ui = await getStarknetUi();
+        if (ui && ui.disconnect) {
+          await ui.disconnect({ clearLastWallet: true });
+        }
+      } catch (err) {
+        console.warn('[wallet] get-starknet disconnect failed:', err);
+      }
       wallet = null;
       account = null;
       provider = null;
@@ -2788,12 +2802,15 @@
         }
       }
       
-      // Check get-starknet
-      html += `<br><strong>get-starknet library:</strong> ${typeof getStarknet !== 'undefined' ? 'loaded' : 'not loaded'}<br>`;
+      // Check get-starknet (modern)
+      const ui = await getStarknetUi();
+      const core = await getStarknetCore();
+      html += `<br><strong>get-starknet UI:</strong> ${ui && ui.connect ? 'loaded' : 'not loaded'}<br>`;
+      html += `<strong>get-starknet core:</strong> ${core && core.getAvailableWallets ? 'loaded' : 'not loaded'}<br>`;
       
-      if (typeof getStarknet !== 'undefined' && getStarknet.getAvailableWallets) {
+      if (core && core.getAvailableWallets) {
         try {
-          const wallets = await getStarknet.getAvailableWallets();
+          const wallets = await core.getAvailableWallets();
           html += `<strong>Available wallets:</strong> ${wallets.length > 0 ? wallets.map(w => w.name || w.id).join(', ') : 'none detected'}<br>`;
           console.log('[detectWallets] Available wallets:', wallets);
         } catch (e) {
