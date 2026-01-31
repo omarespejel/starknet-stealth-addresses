@@ -779,6 +779,8 @@ This SNIP provides **recipient unlinkability** - observers cannot determine whic
 
 The following pattern enables recipient privacy and amount privacy for transfers inside Tongo (entry/exit amounts remain public; sender privacy depends on relayers/pool usage). This assumes Tongo accounts are identified by Stark curve public keys, so the stealth public key `P` can also serve as the recipient's Tongo account identifier.
 
+![Tongo integration diagram](./tongo-diagram.png)
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                AMOUNT-PRIVATE STEALTH FLOW                         │
